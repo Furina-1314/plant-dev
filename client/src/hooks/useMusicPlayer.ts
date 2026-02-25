@@ -44,6 +44,7 @@ export function useMusicPlayer() {
   }, [state.musicVolume]);
 
   useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
     const handleTimeUpdate = () => setCurrentTime(audioRef.current?.currentTime || 0);
@@ -99,10 +100,18 @@ export function useMusicPlayer() {
       }
     };
 
+    const handleTimeUpdate = () => setCurrentTime(audioRef.current?.currentTime || 0);
+    const handleLoadedMetadata = () => {
+      setDuration(audioRef.current?.duration || 0);
+      setCurrentTime(audioRef.current?.currentTime || 0);
+    };
+
     audioRef.current.addEventListener("ended", handleEnded);
 
     return () => {
       audioRef.current?.removeEventListener("ended", handleEnded);
+      audioRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
+      audioRef.current?.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
   }, [state.musicTracks, state.currentMusicId, state.musicRepeatMode, dispatch]);
 
