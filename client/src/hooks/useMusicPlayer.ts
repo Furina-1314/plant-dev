@@ -20,6 +20,15 @@ export function useMusicPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  const readAudioProgress = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const nextTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    setDuration(nextDuration);
+    setCurrentTime(nextTime);
+  }, []);
+
   useEffect(() => {
     audioRef.current = getAudio();
   }, []);
@@ -103,6 +112,41 @@ export function useMusicPlayer() {
     if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
+    // 初始化当前显示，避免面板首次打开时进度条不同步
+    readAudioProgress();
+
+    const handleTimeUpdate = () => readAudioProgress();
+    const handleLoadedMetadata = () => readAudioProgress();
+    const handleDurationChange = () => readAudioProgress();
+
+    audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
+    audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audioRef.current.addEventListener("durationchange", handleDurationChange);
+
+    return () => {
+      audioRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
+      audioRef.current?.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audioRef.current?.removeEventListener("durationchange", handleDurationChange);
+    };
+  }, [readAudioProgress]);
+
+  useEffect(() => {
+    if (!state.isMusicPlaying) return;
+
+    let frame = 0;
+    const tick = () => {
+      readAudioProgress();
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [state.isMusicPlaying, readAudioProgress]);
+
+  useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
+    if (!audioRef.current) return;
+
     const handleEnded = () => {
       const { musicTracks, currentMusicId, musicRepeatMode } = state;
 
@@ -133,20 +177,19 @@ export function useMusicPlayer() {
       }
     };
 
-    const handleTimeUpdate = () => setCurrentTime(audioRef.current?.currentTime || 0);
-    const handleLoadedMetadata = () => {
-      setDuration(audioRef.current?.duration || 0);
-      setCurrentTime(audioRef.current?.currentTime || 0);
+    const handleError = () => {
+      dispatch({ type: "PAUSE_MUSIC" });
+      readAudioProgress();
     };
 
     audioRef.current.addEventListener("ended", handleEnded);
+    audioRef.current.addEventListener("error", handleError);
 
     return () => {
       audioRef.current?.removeEventListener("ended", handleEnded);
-      audioRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
-      audioRef.current?.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audioRef.current?.removeEventListener("error", handleError);
     };
-  }, [state.musicTracks, state.currentMusicId, state.musicRepeatMode, dispatch]);
+  }, [state.musicTracks, state.currentMusicId, state.musicRepeatMode, dispatch, readAudioProgress]);
 
   useEffect(() => {
     if (!isPrimaryControllerRef.current) return;
@@ -162,6 +205,8 @@ export function useMusicPlayer() {
     if (state.isMusicPlaying && currentTrack) {
       if (loadedTrackIdRef.current !== currentTrack.id) {
         loadedTrackIdRef.current = currentTrack.id;
+        setCurrentTime(0);
+        setDuration(0);
         audioRef.current.src = currentTrack.url;
         audioRef.current.load();
       }
@@ -218,8 +263,8 @@ export function useMusicPlayer() {
   const seekTo = useCallback((time: number) => {
     if (!audioRef.current) return;
     audioRef.current.currentTime = time;
-    setCurrentTime(time);
-  }, []);
+    readAudioProgress();
+  }, [readAudioProgress]);
 
   return {
     playTrack,
