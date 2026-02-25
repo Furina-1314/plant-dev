@@ -6,6 +6,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { GameProvider } from "./contexts/GameContext";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+import GlobalMusicPlayerMount from "./components/GlobalMusicPlayerMount";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <GameProvider>
           <TooltipProvider>
             <Toaster />
+            <GlobalMusicPlayerMount />
             <Router />
           </TooltipProvider>
         </GameProvider>

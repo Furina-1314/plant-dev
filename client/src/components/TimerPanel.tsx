@@ -1,6 +1,6 @@
 import { usePomodoro } from "@/hooks/usePomodoro";
 import { useGame, FocusSession } from "@/contexts/GameContext";
-import { Play, Pause, RotateCcw, Settings, Check, X, History, ChevronDown, ChevronUp, Heart } from "lucide-react";
+import { Play, Pause, FastForward, Settings, Check, X, History, ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 
 interface TimerPanelProps {
@@ -143,7 +143,7 @@ function HistoryModal({ sessions, totalMinutes, totalAffection, onClose }: {
 }
 
 export default function TimerPanel({ compact = false }: TimerPanelProps) {
-  const { formattedTime, isRunning, mode, progress, start, pause, reset } = usePomodoro();
+  const { formattedTime, isRunning, mode, progress, start, pause, fastForward } = usePomodoro();
   const { state, dispatch } = useGame();
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -176,6 +176,7 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
 
   const setPomodoroMinutes = (mins: number) => dispatch({ type: "SET_POMODORO_MINUTES", payload: mins });
   const setBreakMinutes = (mins: number) => dispatch({ type: "SET_BREAK_MINUTES", payload: mins });
+  const setPomodoroCycles = (cycles: number) => dispatch({ type: "SET_POMODORO_CYCLES", payload: cycles });
 
   // 计算历史数据
   const totalFocusMinutesFromHistory = state.sessions.reduce((sum, s) => sum + s.duration, 0);
@@ -241,9 +242,25 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
             <input type="number" min="1" max="60" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 60) setBreakMinutes(val); }} placeholder="自定义分钟" className="w-full px-3 py-1.5 rounded-lg bg-gray-100 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300" />
           </div>
 
+          {/* 循环轮数 */}
+          <div className="pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">番茄钟轮数</span>
+              <span className="text-sm font-bold text-purple-600">{state.pomodoroCycles} 轮</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 mb-2">
+              {[1, 2, 4, 6].map((c) => (
+                <button key={c} onClick={() => setPomodoroCycles(c)} className={`py-1.5 rounded-lg text-sm font-medium transition-all ${state.pomodoroCycles === c ? "bg-purple-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <input type="number" min="1" max="12" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 12) setPomodoroCycles(val); }} placeholder="自定义轮数" className="w-full px-3 py-1.5 rounded-lg bg-gray-100 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300" />
+          </div>
+
           {/* 提示 */}
           <div className="bg-blue-50 rounded-xl p-2">
-            <p className="text-xs text-blue-600 text-center">💡 休息倒计时可选，点击 ✓ 随时结束</p>
+            <p className="text-xs text-blue-600 text-center">💡 快进可立即完成当前阶段，自动进入下一阶段</p>
           </div>
         </div>
       </div>
@@ -280,7 +297,7 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <div className="text-5xl font-bold tracking-wider text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{formattedTime}</div>
-              <div className="text-xs text-gray-500 mt-2">{mode === "focus" ? `第 ${state.sessionsCompleted + 1} 个番茄` : "☕ 休息中"}</div>
+              <div className="text-xs text-gray-500 mt-2">{mode === "focus" ? `第 ${state.currentCycle}/${state.pomodoroCycles} 个番茄` : `☕ 第 ${state.currentCycle}/${state.pomodoroCycles} 轮休息`}</div>
             </div>
           </div>
         </div>
@@ -288,16 +305,16 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
 
       {/* 控制按钮 */}
       <div className="flex items-center justify-center gap-4 shrink-0 mt-2">
-        <button onClick={reset} className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" title="重置">
-          <RotateCcw size={20} className="text-gray-600" />
+        <button onClick={fastForward} className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" title="快进当前阶段">
+          <FastForward size={20} className="text-gray-600" />
         </button>
 
         {mode === "focus" ? (
-          <button onClick={isRunning ? pause : start} className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-emerald-500 hover:bg-emerald-600 text-white"}`}>
+          <button onClick={isRunning ? pause : start} className={`relative z-30 w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-emerald-500 hover:bg-emerald-600 text-white"}`}>
             {isRunning ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
           </button>
         ) : (
-          <button onClick={isRunning ? pause : start} className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}>
+          <button onClick={isRunning ? pause : start} className={`relative z-30 w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}>
             {isRunning ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
           </button>
         )}

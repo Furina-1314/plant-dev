@@ -66,6 +66,7 @@ export function usePomodoro() {
   const start = useCallback(() => dispatch({ type: "START_TIMER" }), [dispatch]);
   const pause = useCallback(() => dispatch({ type: "PAUSE_TIMER" }), [dispatch]);
   const reset = useCallback(() => dispatch({ type: "RESET_TIMER" }), [dispatch]);
+  const fastForward = useCallback(() => dispatch({ type: "COMPLETE_SESSION" }), [dispatch]);
 
   const formatTime = useCallback((seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -86,5 +87,6 @@ export function usePomodoro() {
     start,
     pause,
     reset,
+    fastForward,
   };
 }
