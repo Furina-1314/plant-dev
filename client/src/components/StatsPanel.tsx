@@ -1,6 +1,6 @@
 import { useGame } from "@/contexts/GameContext";
 import { useMemo } from "react";
-import { BarChart3, Clock, Zap, Trophy, TrendingUp, Flame, Award } from "lucide-react";
+import { BarChart3, Clock, Zap, Trophy, TrendingUp, Flame, Award, CheckSquare } from "lucide-react";
 
 export default function StatsPanel() {
   const { state } = useGame();
@@ -23,12 +23,15 @@ export default function StatsPanel() {
     return days;
   }, [state.sessions]);
 
-  const maxMinutes = Math.max(...weekData.map((d) => d.minutes), 1);
-  const todayMinutes = weekData[weekData.length - 1]?.minutes || 0;
-  const todaySessions = weekData[weekData.length - 1]?.sessions || 0;
-  const weekTotalMinutes = weekData.reduce((sum, d) => sum + d.minutes, 0);
-  const weekTotalSessions = weekData.reduce((sum, d) => sum + d.sessions, 0);
+  const roundedWeekData = weekData.map((d) => ({ ...d, minutes: Math.round(d.minutes) }));
+  const maxMinutes = Math.max(...roundedWeekData.map((d) => d.minutes), 1);
+  const todayMinutes = roundedWeekData[roundedWeekData.length - 1]?.minutes || 0;
+  const todaySessions = roundedWeekData[roundedWeekData.length - 1]?.sessions || 0;
+  const weekTotalMinutes = roundedWeekData.reduce((sum, d) => sum + d.minutes, 0);
+  const weekTotalSessions = roundedWeekData.reduce((sum, d) => sum + d.sessions, 0);
   const avgMinutes = Math.round(weekTotalMinutes / 7);
+  const todayDateStr = new Date().toDateString();
+  const todayCompletedTodos = state.memos.filter((m) => m.done && new Date(m.updatedAt).toDateString() === todayDateStr).length;
   const bestDay = weekData.reduce((best, current) => 
     current.minutes > best.minutes ? current : best
   , weekData[0]);
@@ -41,7 +44,8 @@ export default function StatsPanel() {
     return { name: "专注传奇", icon: "👑", color: "text-amber-500" };
   };
 
-  const level = getLevel(state.totalFocusMinutes);
+  const roundedTotalFocusMinutes = Math.round(state.totalFocusMinutes);
+  const level = getLevel(roundedTotalFocusMinutes);
 
   const heatmapDays = useMemo(() => {
     const result = [];
@@ -53,7 +57,7 @@ export default function StatsPanel() {
       const dayData = state.heatmapData.find(d => d.date === dateStr);
       result.push({
         date: dateStr,
-        minutes: dayData?.minutes || 0,
+        minutes: Math.round(dayData?.minutes || 0),
       });
     }
     return result;
@@ -89,7 +93,7 @@ export default function StatsPanel() {
           <div className="flex-1">
             <div className={`text-xs font-medium ${level.color}`}>{level.name}</div>
             <div className="text-[10px] text-gray-500">
-              累计专注 {state.totalFocusMinutes} 分钟
+              累计专注 {roundedTotalFocusMinutes} 分钟
             </div>
           </div>
           <div className="text-right">
@@ -102,7 +106,7 @@ export default function StatsPanel() {
       </div>
 
       {/* 今日数据 */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-blue-50 rounded-xl p-3 text-center">
           <Clock size={16} className="mx-auto mb-1 text-blue-500" />
           <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{todayMinutes}</div>
@@ -112,6 +116,11 @@ export default function StatsPanel() {
           <Zap size={16} className="mx-auto mb-1 text-amber-500" />
           <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{todaySessions}</div>
           <div className="text-[10px] text-gray-500">今日番茄数</div>
+        </div>
+        <div className="bg-emerald-50 rounded-xl p-3 text-center">
+          <CheckSquare size={16} className="mx-auto mb-1 text-emerald-500" />
+          <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{todayCompletedTodos}</div>
+          <div className="text-[10px] text-gray-500">今日完成待办</div>
         </div>
       </div>
 
@@ -125,7 +134,7 @@ export default function StatsPanel() {
           <span className="text-[10px] text-gray-400">日均 {avgMinutes} 分钟</span>
         </div>
         <div className="flex items-end gap-1.5 h-16 bg-gray-50 rounded-xl p-3">
-          {weekData.map((day, i) => (
+          {roundedWeekData.map((day, i) => (
             <div key={i} className="flex-1 flex flex-col items-center gap-1">
               <div className="w-full relative" style={{ height: "40px" }}>
                 <div
@@ -191,7 +200,7 @@ export default function StatsPanel() {
             <span className="text-xs text-gray-500">总时长</span>
           </div>
           <span className="text-xs font-medium text-gray-700">
-            {Math.floor(state.totalFocusMinutes / 60)}小时{state.totalFocusMinutes % 60}分钟
+            {Math.floor(roundedTotalFocusMinutes / 60)}小时{roundedTotalFocusMinutes % 60}分钟
           </span>
         </div>
       </div>

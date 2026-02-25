@@ -80,7 +80,7 @@ export default function NotesPanel() {
             <Lightbulb size={16} className="text-white" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-800">灵感备忘</h3>
+            <h3 className="text-sm font-semibold text-gray-800">待办</h3>
             <p className="text-[10px] text-gray-500">{pendingCount} 条待处理</p>
           </div>
         </div>
@@ -92,7 +92,7 @@ export default function NotesPanel() {
       {/* 搜索 */}
       <div className="relative mb-3 shrink-0">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索笔记..."
+        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索待办..."
           className="w-full bg-gray-100 rounded-xl pl-9 pr-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300" />
       </div>
 
@@ -131,7 +131,7 @@ export default function NotesPanel() {
       {/* 添加表单 */}
       {isAdding && (
         <div className="mb-3 bg-gray-50 rounded-xl p-3 shrink-0">
-          <textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="记录灵感..." rows={2} autoFocus className="w-full bg-transparent text-sm resize-none placeholder:text-gray-400 focus:outline-none mb-2" />
+          <textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="添加待办内容..." rows={2} autoFocus className="w-full bg-transparent text-sm resize-none placeholder:text-gray-400 focus:outline-none mb-2" />
           <div className="flex items-center gap-2">
             <select value={newTag} onChange={(e) => setNewTag(e.target.value)} className="bg-white rounded-lg px-2 py-1.5 text-xs border border-gray-200">
               {state.memoTags.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -156,7 +156,7 @@ export default function NotesPanel() {
         {filteredMemos.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <Lightbulb size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">{searchQuery ? "没有找到" : "记录你的灵感"}</p>
+            <p className="text-sm">{searchQuery ? "没有找到" : "记录你的待办"}</p>
           </div>
         ) : (
           filteredMemos.map((memo) => (

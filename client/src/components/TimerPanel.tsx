@@ -1,6 +1,6 @@
 import { usePomodoro } from "@/hooks/usePomodoro";
 import { useGame, FocusSession } from "@/contexts/GameContext";
-import { Play, Pause, RotateCcw, Settings, Check, X, History, ChevronDown, ChevronUp, Heart } from "lucide-react";
+import { Play, Pause, FastForward, Settings, Check, X, History, ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 
 interface TimerPanelProps {
@@ -8,7 +8,7 @@ interface TimerPanelProps {
 }
 
 // 庆祝动画
-function Celebration({ show, onComplete }: { show: boolean; onComplete: () => void }) {
+function Celebration({ show, onComplete, emoji = "🎉", message = "" }: { show: boolean; onComplete: () => void; emoji?: string; message?: string }) {
   useEffect(() => {
     if (show) {
       const timer = setTimeout(onComplete, 1500);
@@ -20,7 +20,10 @@ function Celebration({ show, onComplete }: { show: boolean; onComplete: () => vo
 
   return (
     <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm rounded-2xl">
-      <div className="text-6xl animate-bounce">🎉</div>
+      <div className="text-center">
+        <div className="text-6xl animate-bounce">{emoji}</div>
+        {message && <div className="mt-2 text-sm font-semibold text-emerald-700">{message}</div>}
+      </div>
     </div>
   );
 }
@@ -143,11 +146,12 @@ function HistoryModal({ sessions, totalMinutes, totalAffection, onClose }: {
 }
 
 export default function TimerPanel({ compact = false }: TimerPanelProps) {
-  const { formattedTime, isRunning, mode, progress, start, pause, reset } = usePomodoro();
+  const { formattedTime, isRunning, mode, progress, start, pause, fastForward } = usePomodoro();
   const { state, dispatch } = useGame();
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showCycleEndCelebration, setShowCycleEndCelebration] = useState(false);
 
   // 监听专注完成
   useEffect(() => {
@@ -159,6 +163,11 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
       }
     }
   }, [mode, state.sessionsCompleted]);
+
+  useEffect(() => {
+    if (!state.lastCycleCompletionMark) return;
+    setShowCycleEndCelebration(true);
+  }, [state.lastCycleCompletionMark]);
 
   const handleCelebrationComplete = useCallback(() => {
     setShowCelebration(false);
@@ -176,6 +185,7 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
 
   const setPomodoroMinutes = (mins: number) => dispatch({ type: "SET_POMODORO_MINUTES", payload: mins });
   const setBreakMinutes = (mins: number) => dispatch({ type: "SET_BREAK_MINUTES", payload: mins });
+  const setPomodoroCycles = (cycles: number) => dispatch({ type: "SET_POMODORO_CYCLES", payload: cycles });
 
   // 计算历史数据
   const totalFocusMinutesFromHistory = state.sessions.reduce((sum, s) => sum + s.duration, 0);
@@ -198,53 +208,72 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
   // 设置界面
   if (showSettings) {
     return (
-      <div className={`bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg flex flex-col ${compact ? "h-[340px]" : "h-[400px]"}`}>
+      <div className={`bg-white/80 backdrop-blur-sm rounded-2xl p-3 shadow-lg flex flex-col ${compact ? "h-[340px]" : "h-[400px]"}`}>
         {/* 头部 */}
-        <div className="flex items-center justify-between mb-3 shrink-0">
-          <h3 className="text-base font-bold text-gray-800">计时设置</h3>
+        <div className="flex items-center justify-between mb-2 shrink-0">
+          <h3 className="text-sm font-bold text-gray-800">计时设置</h3>
           <button onClick={() => setShowSettings(false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <X size={18} className="text-gray-500" />
+            <X size={16} className="text-gray-500" />
           </button>
         </div>
 
-        {/* 内容区域 */}
-        <div className="flex-1 flex flex-col justify-between">
+        {/* 可滚动内容区域 */}
+        <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
           {/* 专注时长 */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">专注时长</span>
-              <span className="text-sm font-bold text-emerald-600">{state.pomodoroMinutes} 分钟</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-600">专注时长</span>
+              <span className="text-xs font-bold text-emerald-600">{state.pomodoroMinutes} 分钟</span>
             </div>
-            <div className="grid grid-cols-5 gap-1.5 mb-2">
+            <div className="grid grid-cols-5 gap-1 mb-1.5">
               {[15, 25, 30, 45, 60].map((m) => (
-                <button key={m} onClick={() => setPomodoroMinutes(m)} className={`py-1.5 rounded-lg text-sm font-medium transition-all ${state.pomodoroMinutes === m ? "bg-emerald-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                <button key={m} onClick={() => setPomodoroMinutes(m)} className={`py-1 rounded-lg text-xs font-medium transition-all ${state.pomodoroMinutes === m ? "bg-emerald-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                   {m}
                 </button>
               ))}
             </div>
-            <input type="number" min="1" max="180" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 180) setPomodoroMinutes(val); }} placeholder="自定义分钟" className="w-full px-3 py-1.5 rounded-lg bg-gray-100 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+            <input type="number" min="1" max="180" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 180) setPomodoroMinutes(val); }} placeholder="自定义分钟" className="w-full px-2.5 py-1 rounded-lg bg-gray-100 text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300" />
           </div>
 
           {/* 休息时长 */}
-          <div className="pt-3 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">休息时长</span>
-              <span className="text-sm font-bold text-amber-600">{state.breakMinutes} 分钟</span>
+          <div className="pt-2 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-600">休息时长</span>
+              <span className="text-xs font-bold text-amber-600">{state.breakMinutes} 分钟</span>
             </div>
-            <div className="grid grid-cols-4 gap-1.5 mb-2">
+            <div className="grid grid-cols-4 gap-1 mb-1.5">
               {[3, 5, 10, 15].map((m) => (
-                <button key={m} onClick={() => setBreakMinutes(m)} className={`py-1.5 rounded-lg text-sm font-medium transition-all ${state.breakMinutes === m ? "bg-amber-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                <button key={m} onClick={() => setBreakMinutes(m)} className={`py-1 rounded-lg text-xs font-medium transition-all ${state.breakMinutes === m ? "bg-amber-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                   {m}
                 </button>
               ))}
             </div>
-            <input type="number" min="1" max="60" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 60) setBreakMinutes(val); }} placeholder="自定义分钟" className="w-full px-3 py-1.5 rounded-lg bg-gray-100 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300" />
+            <input type="number" min="1" max="60" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 60) setBreakMinutes(val); }} placeholder="自定义分钟" className="w-full px-2.5 py-1 rounded-lg bg-gray-100 text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300" />
           </div>
 
-          {/* 提示 */}
-          <div className="bg-blue-50 rounded-xl p-2">
-            <p className="text-xs text-blue-600 text-center">💡 休息倒计时可选，点击 ✓ 随时结束</p>
+          {/* 循环轮数 */}
+          <div className="pt-2 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-600">番茄钟轮数</span>
+              <span className="text-xs font-bold text-purple-600">{state.pomodoroCycles} 轮</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1 mb-1.5">
+              {[1, 2, 4, 6].map((c) => (
+                <button key={c} onClick={() => setPomodoroCycles(c)} className={`py-1 rounded-lg text-xs font-medium transition-all ${state.pomodoroCycles === c ? "bg-purple-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <input type="number" min="1" max="12" onChange={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 12) setPomodoroCycles(val); }} placeholder="自定义轮数" className="w-full px-2.5 py-1 rounded-lg bg-gray-100 text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300" />
           </div>
+
+          <div className="bg-blue-50 rounded-xl p-2">
+            <p className="text-[11px] text-blue-600 text-center">💡 快进可立即完成当前阶段，自动进入下一阶段</p>
+          </div>
+        </div>
+
+        <div className="pt-2 mt-2 border-t border-gray-200 shrink-0">
+          <button onClick={() => setShowSettings(false)} className="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">保存设置</button>
         </div>
       </div>
     );
@@ -254,6 +283,12 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
   return (
     <div className={`bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg flex flex-col relative ${compact ? "h-[340px]" : "h-[400px]"}`}>
       <Celebration show={showCelebration} onComplete={handleCelebrationComplete} />
+      <Celebration
+        show={showCycleEndCelebration}
+        onComplete={() => setShowCycleEndCelebration(false)}
+        emoji="🏆"
+        message="已完成本轮番茄循环！"
+      />
 
       {/* 模式指示器 */}
       <div className="flex items-center justify-center gap-2 mb-3 shrink-0">
@@ -280,7 +315,7 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <div className="text-5xl font-bold tracking-wider text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{formattedTime}</div>
-              <div className="text-xs text-gray-500 mt-2">{mode === "focus" ? `第 ${state.sessionsCompleted + 1} 个番茄` : "☕ 休息中"}</div>
+              <div className="text-xs text-gray-500 mt-2">{mode === "focus" ? `第 ${state.currentCycle}/${state.pomodoroCycles} 个番茄` : `☕ 第 ${state.currentCycle}/${state.pomodoroCycles} 轮休息`}</div>
             </div>
           </div>
         </div>
@@ -288,16 +323,21 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
 
       {/* 控制按钮 */}
       <div className="flex items-center justify-center gap-4 shrink-0 mt-2">
-        <button onClick={reset} className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" title="重置">
-          <RotateCcw size={20} className="text-gray-600" />
+        <button
+          onClick={fastForward}
+          disabled={mode === "break"}
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${mode === "break" ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-gray-100 hover:bg-gray-200"}`}
+          title={mode === "break" ? "休息阶段不可快进" : "快进当前番茄"}
+        >
+          <FastForward size={20} className={mode === "break" ? "text-gray-300" : "text-gray-600"} />
         </button>
 
         {mode === "focus" ? (
-          <button onClick={isRunning ? pause : start} className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-emerald-500 hover:bg-emerald-600 text-white"}`}>
+          <button onClick={isRunning ? pause : start} className={`relative z-30 w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-emerald-500 hover:bg-emerald-600 text-white"}`}>
             {isRunning ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
           </button>
         ) : (
-          <button onClick={isRunning ? pause : start} className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}>
+          <button onClick={isRunning ? pause : start} className={`relative z-30 w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRunning ? "bg-amber-400 hover:bg-amber-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}>
             {isRunning ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
           </button>
         )}
