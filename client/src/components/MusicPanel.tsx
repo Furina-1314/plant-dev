@@ -1,7 +1,7 @@
 import { useGame, type MusicTrack } from "@/contexts/GameContext";
 import { useMusicPlayer } from "@/hooks/useMusicPlayer";
 import { useRef, useState } from "react";
-import { Upload, Play, Pause, SkipBack, SkipForward, ChevronDown, ChevronUp, ListMusic, Repeat, Repeat1, GripVertical, Trash2 } from "lucide-react";
+import { Upload, Play, Pause, SkipBack, SkipForward, ChevronDown, ChevronUp, ListMusic, Repeat, Repeat1, GripVertical, Trash2, Volume2 } from "lucide-react";
 
 function formatTime(value: number) {
   if (!Number.isFinite(value) || value < 0) return "00:00";
@@ -16,19 +16,27 @@ export default function MusicPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
+    const existingKeys = new Set(state.musicTracks.map((t) => t.sourceKey || t.name));
     const tracks: MusicTrack[] = [];
+
     Array.from(files).forEach((file) => {
       if (!file.type.startsWith("audio/")) return;
+      const sourceKey = `${file.name}-${file.size}-${file.lastModified}`;
+      if (existingKeys.has(sourceKey) || existingKeys.has(file.name.replace(/\.[^/.]+$/, ""))) return;
+      existingKeys.add(sourceKey);
+
       tracks.push({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         name: file.name.replace(/\.[^/.]+$/, ""),
         url: URL.createObjectURL(file),
         createdAt: new Date().toISOString(),
+        sourceKey,
       });
     });
 
@@ -73,7 +81,7 @@ export default function MusicPanel() {
       </div>
 
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 relative">
           <button onClick={playPrevious} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="上一首"><SkipBack size={16} /></button>
           <button
             onClick={() => {
@@ -88,18 +96,24 @@ export default function MusicPanel() {
             {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </button>
           <button onClick={playNext} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="下一首"><SkipForward size={16} /></button>
-          <div className="flex items-center gap-1 ml-1">
-            <span className="text-[10px] text-gray-400">音量</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="w-16 accent-indigo-500"
-            />
-          </div>
+
+          <button onClick={() => setShowVolumeSlider((v) => !v)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="音量">
+            <Volume2 size={16} />
+          </button>
+          {showVolumeSlider && (
+            <div className="absolute left-[130px] bottom-9 w-8 h-28 bg-white border border-gray-200 rounded-lg shadow-md flex items-center justify-center">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="h-20 w-3 accent-indigo-500"
+                style={{ writingMode: "vertical-lr", direction: "rtl" }}
+              />
+            </div>
+          )}
         </div>
 
         <button onClick={handleRepeatToggle} className="px-2 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center gap-1" title="切换循环模式">

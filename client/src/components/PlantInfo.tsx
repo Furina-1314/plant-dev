@@ -30,6 +30,8 @@ export default function PlantInfo() {
   const currentStage = PLANT_STAGES[currentIndex];
   const nextStage = PLANT_STAGES[currentIndex + 1];
   
+  const roundedFocusMinutes = Math.round(state.totalFocusMinutes);
+
   // 计算当前等级
   const currentLevel = AFFECTION_LEVELS.slice().reverse().find(l => state.affection >= l.min) || AFFECTION_LEVELS[0];
   
@@ -107,7 +109,7 @@ export default function PlantInfo() {
         </div>
         <div className="text-center p-2 rounded-xl bg-blue-50">
           <Timer size={14} className="mx-auto mb-0.5 text-blue-500" />
-          <div className="text-base font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{state.totalFocusMinutes}</div>
+          <div className="text-base font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{roundedFocusMinutes}</div>
           <div className="text-[9px] text-gray-500">专注分钟</div>
         </div>
         <div className="text-center p-2 rounded-xl bg-orange-50">

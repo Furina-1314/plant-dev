@@ -58,6 +58,7 @@ export interface MusicTrack {
   name: string;
   url: string; // blob URL or data URL
   createdAt: string;
+  sourceKey?: string;
 }
 
 export interface GameState {
@@ -90,6 +91,7 @@ export interface GameState {
   isMusicPlaying: boolean;
   musicVolume: number;
   musicRepeatMode: "none" | "all" | "one"; // 顺序播放, 列表循环, 单曲循环
+  customBackground: string | null;
 
   // Todos
   memos: MemoEntry[];
@@ -328,7 +330,8 @@ type GameAction =
   | { type: "PLAY_MUSIC"; payload: string | null }
   | { type: "PAUSE_MUSIC" }
   | { type: "SET_MUSIC_VOLUME"; payload: number }
-  | { type: "SET_MUSIC_REPEAT_MODE"; payload: "none" | "all" | "one" };
+  | { type: "SET_MUSIC_REPEAT_MODE"; payload: "none" | "all" | "one" }
+  | { type: "SET_CUSTOM_BACKGROUND"; payload: string | null };
 
 // ============ Initial State ============
 const initialState: GameState = {
@@ -354,6 +357,7 @@ const initialState: GameState = {
   isMusicPlaying: false,
   musicVolume: 0.5,
   musicRepeatMode: "all",
+  customBackground: null,
   memos: [],
   memoTags: ["学习", "灵感", "待查", "论文"],
   notes: [],
@@ -425,7 +429,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
         return {
           ...state,
-          affection: state.affection + affectionGain,
+          affection: Math.max(0, (Number.isFinite(state.affection) ? state.affection : 0) + affectionGain),
           totalFocusMinutes: state.totalFocusMinutes + completedFocusMinutes,
           sessionsCompleted: state.sessionsCompleted + 1,
           currentStreak: newStreak,
@@ -453,7 +457,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // 休息完成 -> 进入下一轮专注
       return {
         ...state,
-        isTimerRunning: false,
+        isTimerRunning: true,
         timerMode: "focus",
         currentCycle: Math.min(state.currentCycle + 1, state.pomodoroCycles),
         timeRemaining: state.pomodoroMinutes * 60,
@@ -660,6 +664,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "SET_MUSIC_REPEAT_MODE":
       return { ...state, musicRepeatMode: action.payload };
+
+    case "SET_CUSTOM_BACKGROUND":
+      return { ...state, customBackground: action.payload };
 
     case "LOAD_STATE":
       return { ...state, ...action.payload };

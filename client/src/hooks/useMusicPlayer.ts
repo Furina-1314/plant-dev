@@ -14,6 +14,7 @@ function getAudio() {
 export function useMusicPlayer() {
   const { state, dispatch } = useGame();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loadedTrackIdRef = useRef<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -60,7 +61,10 @@ export function useMusicPlayer() {
     };
 
     const handleTimeUpdate = () => setCurrentTime(audioRef.current?.currentTime || 0);
-    const handleLoadedMetadata = () => setDuration(audioRef.current?.duration || 0);
+    const handleLoadedMetadata = () => {
+      setDuration(audioRef.current?.duration || 0);
+      setCurrentTime(audioRef.current?.currentTime || 0);
+    };
 
     audioRef.current.addEventListener("ended", handleEnded);
     audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
@@ -78,8 +82,14 @@ export function useMusicPlayer() {
 
     const currentTrack = state.musicTracks.find((t) => t.id === state.currentMusicId);
 
+    if (state.isMusicPlaying && !currentTrack && state.musicTracks.length > 0) {
+      dispatch({ type: "PLAY_MUSIC", payload: state.musicTracks[0].id });
+      return;
+    }
+
     if (state.isMusicPlaying && currentTrack) {
-      if (audioRef.current.src !== currentTrack.url) {
+      if (loadedTrackIdRef.current !== currentTrack.id) {
+        loadedTrackIdRef.current = currentTrack.id;
         audioRef.current.src = currentTrack.url;
         audioRef.current.load();
       }
@@ -109,19 +119,27 @@ export function useMusicPlayer() {
 
   const playNext = useCallback(() => {
     const { musicTracks, currentMusicId } = state;
-    if (!currentMusicId || musicTracks.length === 0) return;
+    if (musicTracks.length === 0) return;
+    if (!currentMusicId) {
+      dispatch({ type: "PLAY_MUSIC", payload: musicTracks[0].id });
+      return;
+    }
 
     const currentIndex = musicTracks.findIndex((t) => t.id === currentMusicId);
-    const nextIndex = (currentIndex + 1) % musicTracks.length;
+    const nextIndex = (Math.max(0, currentIndex) + 1) % musicTracks.length;
     dispatch({ type: "PLAY_MUSIC", payload: musicTracks[nextIndex].id });
   }, [state.musicTracks, state.currentMusicId, dispatch]);
 
   const playPrevious = useCallback(() => {
     const { musicTracks, currentMusicId } = state;
-    if (!currentMusicId || musicTracks.length === 0) return;
+    if (musicTracks.length === 0) return;
+    if (!currentMusicId) {
+      dispatch({ type: "PLAY_MUSIC", payload: musicTracks[0].id });
+      return;
+    }
 
     const currentIndex = musicTracks.findIndex((t) => t.id === currentMusicId);
-    const prevIndex = currentIndex === 0 ? musicTracks.length - 1 : currentIndex - 1;
+    const prevIndex = currentIndex <= 0 ? musicTracks.length - 1 : currentIndex - 1;
     dispatch({ type: "PLAY_MUSIC", payload: musicTracks[prevIndex].id });
   }, [state.musicTracks, state.currentMusicId, dispatch]);
 

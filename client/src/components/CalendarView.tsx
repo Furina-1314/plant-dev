@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useGame } from "@/contexts/GameContext";
-import { ChevronLeft, ChevronRight, Clock, Target, X, BookText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Target, X, BookText, CheckSquare, Activity } from "lucide-react";
 
 interface CalendarViewProps {
   onClose: () => void;
@@ -53,7 +53,7 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
   const monthStats = useMemo(() => {
     const days = calendarDays.filter((d) => d !== null) as { minutes: number; sessions: number }[];
     return {
-      totalMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
+      totalMinutes: Math.round(days.reduce((sum, d) => sum + d.minutes, 0)),
       totalSessions: days.reduce((sum, d) => sum + d.sessions, 0),
       completedTodos: state.memos.filter((m) => {
         if (!m.done) return false;
@@ -84,8 +84,8 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
         <div className="grid grid-cols-4 gap-4 p-5 bg-gradient-to-r from-emerald-50 to-teal-50 shrink-0">
           <div className="text-center"><div className="flex items-center justify-center gap-1 text-emerald-600 mb-1"><Clock size={14} /><span className="text-lg font-bold">{monthStats.totalMinutes}</span></div><div className="text-[10px] text-gray-500">本月专注分钟</div></div>
           <div className="text-center"><div className="flex items-center justify-center gap-1 text-amber-600 mb-1"><Target size={14} /><span className="text-lg font-bold">{monthStats.totalSessions}</span></div><div className="text-[10px] text-gray-500">完成番茄数</div></div>
-          <div className="text-center"><div className="flex items-center justify-center gap-1 text-indigo-600 mb-1"><span className="text-lg font-bold">{monthStats.completedTodos}</span></div><div className="text-[10px] text-gray-500">本月完成待办</div></div>
-          <div className="text-center"><div className="flex items-center justify-center gap-1 text-blue-600 mb-1"><span className="text-lg font-bold">{monthStats.activeDays}</span></div><div className="text-[10px] text-gray-500">活跃天数</div></div>
+          <div className="text-center"><div className="flex items-center justify-center gap-1 text-indigo-600 mb-1"><CheckSquare size={14} /><span className="text-lg font-bold">{monthStats.completedTodos}</span></div><div className="text-[10px] text-gray-500">本月完成待办</div></div>
+          <div className="text-center"><div className="flex items-center justify-center gap-1 text-blue-600 mb-1"><Activity size={14} /><span className="text-lg font-bold">{monthStats.activeDays}</span></div><div className="text-[10px] text-gray-500">活跃天数</div></div>
         </div>
 
         <div className="grid md:grid-cols-[1.3fr_1fr] gap-0 min-h-0 flex-1">
@@ -100,7 +100,7 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
                     <button
                       onClick={() => setSelectedDate(dayData.date)}
                       className={`w-full h-full rounded-xl flex flex-col items-center justify-center text-sm transition-all hover:scale-105 ${getIntensity(dayData.minutes)} ${dayData.minutes > 0 ? "text-white font-medium" : "text-gray-700"} ${dayData.date === todayStr ? "ring-2 ring-indigo-400" : ""} ${selectedDate === dayData.date ? "ring-2 ring-emerald-500" : ""}`}
-                      title={dayData.minutes > 0 ? `${dayData.date}: ${dayData.minutes}分钟, ${dayData.sessions}个番茄` : dayData.date}
+                      title={dayData.minutes > 0 ? `${dayData.date}: ${Math.round(dayData.minutes)}分钟, ${dayData.sessions}个番茄` : dayData.date}
                     >
                       <span>{dayData.day}</span>
                       {dayData.sessions > 0 && <span className="text-[9px] opacity-80">{dayData.sessions}🍅</span>}

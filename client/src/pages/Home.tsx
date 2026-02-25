@@ -11,6 +11,7 @@ import ProfilePage from "@/components/ProfilePage";
 import CalendarView from "@/components/CalendarView";
 import DialogBubble from "@/components/DialogBubble";
 import FloatingParticles from "@/components/FloatingParticles";
+import { useGame } from "@/contexts/GameContext";
 import {
   FileText,
   Target,
@@ -36,6 +37,7 @@ type RightTab = "todo" | "habits" | "notes" | "stats";
 type MobilePanel = "timer" | "music" | "sounds" | "plant" | "todo" | "notes" | "habits" | "stats" | null;
 
 export default function Home() {
+  const { state } = useGame();
   const [rightTab, setRightTab] = useState<RightTab>("todo");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -73,6 +75,10 @@ export default function Home() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-sky-50 to-green-50">
+      {state.customBackground && (
+        <div className="absolute inset-0 opacity-70" style={{ backgroundImage: `url(${state.customBackground})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+      )}
+
       {/* 背景 */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 opacity-40" style={{ backgroundImage: `url(${CLOUDS_BG})`, backgroundSize: "cover", backgroundPosition: "center" }} />
@@ -82,7 +88,7 @@ export default function Home() {
       <FloatingParticles />
 
       {/* 顶部工具栏 */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex gap-2">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 hidden lg:flex gap-2">
         <button onClick={() => setShowCalendar(true)} className="p-2.5 rounded-xl bg-white/80 shadow-lg hover:bg-white transition-colors text-gray-600" title="日历">
           <Calendar size={20} />
         </button>

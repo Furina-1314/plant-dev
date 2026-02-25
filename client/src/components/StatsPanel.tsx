@@ -23,11 +23,12 @@ export default function StatsPanel() {
     return days;
   }, [state.sessions]);
 
-  const maxMinutes = Math.max(...weekData.map((d) => d.minutes), 1);
-  const todayMinutes = weekData[weekData.length - 1]?.minutes || 0;
-  const todaySessions = weekData[weekData.length - 1]?.sessions || 0;
-  const weekTotalMinutes = weekData.reduce((sum, d) => sum + d.minutes, 0);
-  const weekTotalSessions = weekData.reduce((sum, d) => sum + d.sessions, 0);
+  const roundedWeekData = weekData.map((d) => ({ ...d, minutes: Math.round(d.minutes) }));
+  const maxMinutes = Math.max(...roundedWeekData.map((d) => d.minutes), 1);
+  const todayMinutes = roundedWeekData[roundedWeekData.length - 1]?.minutes || 0;
+  const todaySessions = roundedWeekData[roundedWeekData.length - 1]?.sessions || 0;
+  const weekTotalMinutes = roundedWeekData.reduce((sum, d) => sum + d.minutes, 0);
+  const weekTotalSessions = roundedWeekData.reduce((sum, d) => sum + d.sessions, 0);
   const avgMinutes = Math.round(weekTotalMinutes / 7);
   const todayDateStr = new Date().toDateString();
   const todayCompletedTodos = state.memos.filter((m) => m.done && new Date(m.updatedAt).toDateString() === todayDateStr).length;
@@ -43,7 +44,8 @@ export default function StatsPanel() {
     return { name: "专注传奇", icon: "👑", color: "text-amber-500" };
   };
 
-  const level = getLevel(state.totalFocusMinutes);
+  const roundedTotalFocusMinutes = Math.round(state.totalFocusMinutes);
+  const level = getLevel(roundedTotalFocusMinutes);
 
   const heatmapDays = useMemo(() => {
     const result = [];
@@ -55,7 +57,7 @@ export default function StatsPanel() {
       const dayData = state.heatmapData.find(d => d.date === dateStr);
       result.push({
         date: dateStr,
-        minutes: dayData?.minutes || 0,
+        minutes: Math.round(dayData?.minutes || 0),
       });
     }
     return result;
@@ -91,7 +93,7 @@ export default function StatsPanel() {
           <div className="flex-1">
             <div className={`text-xs font-medium ${level.color}`}>{level.name}</div>
             <div className="text-[10px] text-gray-500">
-              累计专注 {state.totalFocusMinutes} 分钟
+              累计专注 {roundedTotalFocusMinutes} 分钟
             </div>
           </div>
           <div className="text-right">
@@ -132,7 +134,7 @@ export default function StatsPanel() {
           <span className="text-[10px] text-gray-400">日均 {avgMinutes} 分钟</span>
         </div>
         <div className="flex items-end gap-1.5 h-16 bg-gray-50 rounded-xl p-3">
-          {weekData.map((day, i) => (
+          {roundedWeekData.map((day, i) => (
             <div key={i} className="flex-1 flex flex-col items-center gap-1">
               <div className="w-full relative" style={{ height: "40px" }}>
                 <div
@@ -198,7 +200,7 @@ export default function StatsPanel() {
             <span className="text-xs text-gray-500">总时长</span>
           </div>
           <span className="text-xs font-medium text-gray-700">
-            {Math.floor(state.totalFocusMinutes / 60)}小时{state.totalFocusMinutes % 60}分钟
+            {Math.floor(roundedTotalFocusMinutes / 60)}小时{roundedTotalFocusMinutes % 60}分钟
           </span>
         </div>
       </div>
