@@ -30,6 +30,8 @@ export default function PlantInfo() {
   const currentStage = PLANT_STAGES[currentIndex];
   const nextStage = PLANT_STAGES[currentIndex + 1];
   
+  const roundedFocusMinutes = Math.round(state.totalFocusMinutes);
+
   // 计算当前等级
   const currentLevel = AFFECTION_LEVELS.slice().reverse().find(l => state.affection >= l.min) || AFFECTION_LEVELS[0];
   
@@ -107,7 +109,7 @@ export default function PlantInfo() {
         </div>
         <div className="text-center p-2 rounded-xl bg-blue-50">
           <Timer size={14} className="mx-auto mb-0.5 text-blue-500" />
-          <div className="text-base font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{state.totalFocusMinutes}</div>
+          <div className="text-base font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{roundedFocusMinutes}</div>
           <div className="text-[9px] text-gray-500">专注分钟</div>
         </div>
         <div className="text-center p-2 rounded-xl bg-orange-50">
@@ -119,8 +121,8 @@ export default function PlantInfo() {
 
       {/* 植物预览弹窗 */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPreview(false)}>
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm pt-8 pb-4 px-4 overflow-y-auto" onClick={() => setShowPreview(false)}>
+          <div className="bg-white rounded-3xl p-4 max-w-sm w-full max-h-[calc(100vh-3rem)] overflow-y-auto shadow-2xl mt-2" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">植物成长预览</h3>
               <button onClick={() => setShowPreview(false)} className="p-2 rounded-full hover:bg-gray-100">
@@ -129,11 +131,11 @@ export default function PlantInfo() {
             </div>
             
             {/* 预览显示 */}
-            <div className="bg-gradient-to-b from-sky-100 to-green-100 rounded-2xl p-8 mb-4 text-center">
-              <div className="text-8xl mb-3">{STAGE_ICONS[PLANT_STAGES[previewStage].image]}</div>
-              <div className="text-xl font-bold text-gray-800">{STAGE_NAMES[PLANT_STAGES[previewStage].image]}</div>
-              <div className="text-sm text-gray-600 mt-1">{PLANT_STAGES[previewStage].description}</div>
-              <div className="text-xs text-gray-500 mt-2">需要 {PLANT_STAGES[previewStage].minAffection} 好感度</div>
+            <div className="bg-gradient-to-b from-sky-100 to-green-100 rounded-2xl p-4 mb-4 text-center">
+              <div className="text-6xl mb-2">{STAGE_ICONS[PLANT_STAGES[previewStage].image]}</div>
+              <div className="text-lg font-bold text-gray-800">{STAGE_NAMES[PLANT_STAGES[previewStage].image]}</div>
+              <div className="text-xs text-gray-600 mt-1">{PLANT_STAGES[previewStage].description}</div>
+              <div className="text-[11px] text-gray-500 mt-2">需要 {PLANT_STAGES[previewStage].minAffection} 好感度</div>
             </div>
 
             {/* 导航 */}
@@ -158,7 +160,7 @@ export default function PlantInfo() {
               ) : previewStage < currentIndex ? (
                 <span className="text-sm text-gray-500">已解锁</span>
               ) : (
-                <span className="text-sm text-amber-600">还需 {PLANT_STAGES[previewStage].minAffection - state.affection} 好感度解锁</span>
+                <span className="text-sm text-amber-600">还需 {Math.max(0, PLANT_STAGES[previewStage].minAffection - state.affection)} 好感度解锁</span>
               )}
             </div>
           </div>
