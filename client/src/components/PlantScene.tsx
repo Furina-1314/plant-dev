@@ -595,15 +595,25 @@ export default function PlantScene() {
       creator(plantGroup);
     }
 
-    plantGroup.scale.set(0.7, 0.7, 0.7);
-    let scale = 0.7;
+    const stageScaleMap: Record<string, number> = {
+      seed: 1,
+      sprout: 1,
+      grass: 1,
+      bush: 0.95,
+      small_tree: 0.9,
+      flower_tree: 0.82,
+    };
+    const targetScale = stageScaleMap[stageImage] ?? 1;
+
+    plantGroup.scale.set(0.65, 0.65, 0.65);
+    let scale = 0.65;
     const growIn = () => {
-      scale += (1 - scale) * 0.04;
+      scale += (targetScale - scale) * 0.04;
       plantGroup.scale.set(scale, scale, scale);
-      if (Math.abs(1 - scale) > 0.005) {
+      if (Math.abs(targetScale - scale) > 0.005) {
         requestAnimationFrame(growIn);
       } else {
-        plantGroup.scale.set(1, 1, 1);
+        plantGroup.scale.set(targetScale, targetScale, targetScale);
       }
     };
     requestAnimationFrame(growIn);
