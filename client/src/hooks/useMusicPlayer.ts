@@ -47,6 +47,29 @@ export function useMusicPlayer() {
     if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
+    const handleTimeUpdate = () => setCurrentTime(audioRef.current?.currentTime || 0);
+    const handleLoadedMetadata = () => {
+      setDuration(audioRef.current?.duration || 0);
+      setCurrentTime(audioRef.current?.currentTime || 0);
+    };
+
+    // 初始化当前显示，避免面板首次打开时进度条不同步
+    setDuration(audioRef.current.duration || 0);
+    setCurrentTime(audioRef.current.currentTime || 0);
+
+    audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
+    audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      audioRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
+      audioRef.current?.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
+    if (!audioRef.current) return;
+
     const handleEnded = () => {
       const { musicTracks, currentMusicId, musicRepeatMode } = state;
 
@@ -84,8 +107,6 @@ export function useMusicPlayer() {
     };
 
     audioRef.current.addEventListener("ended", handleEnded);
-    audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
-    audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     return () => {
       audioRef.current?.removeEventListener("ended", handleEnded);
