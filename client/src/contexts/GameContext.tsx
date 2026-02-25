@@ -423,6 +423,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
         const hasCompletedAllCycles = state.currentCycle >= state.pomodoroCycles;
 
+        const hasCompletedAllCycles = state.currentCycle >= state.pomodoroCycles;
+
         return {
           ...state,
           affection: state.affection + affectionGain,
