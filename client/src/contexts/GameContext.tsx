@@ -18,6 +18,13 @@ export interface MemoEntry {
   updatedAt: string;
 }
 
+export interface NoteEntry {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HabitEntry {
   id: string;
   name: string;
@@ -51,6 +58,7 @@ export interface MusicTrack {
   name: string;
   url: string; // blob URL or data URL
   createdAt: string;
+  sourceKey?: string;
 }
 
 export interface GameState {
@@ -65,9 +73,14 @@ export interface GameState {
   // Pomodoro
   pomodoroMinutes: number;
   breakMinutes: number;
+  pomodoroCycles: number;
+  currentCycle: number;
   isTimerRunning: boolean;
   timerMode: "focus" | "break";
   timeRemaining: number;
+  lastCycleCompletionMark: number;
+  cycleAccumulatedFocusSeconds: number;
+  cycleAccumulatedPomodoros: number;
 
   // Sound — scene-based
   activeScene: string | null;
@@ -80,10 +93,17 @@ export interface GameState {
   isMusicPlaying: boolean;
   musicVolume: number;
   musicRepeatMode: "none" | "all" | "one"; // 顺序播放, 列表循环, 单曲循环
+  customBackground: string | null;
 
-  // Memos (was notes)
+  // Todos
   memos: MemoEntry[];
   memoTags: string[];
+
+  // Notes
+  notes: NoteEntry[];
+
+  // Calendar Diary
+  diaryEntries: Record<string, string>;
 
   // Habits
   habits: HabitEntry[];
@@ -283,9 +303,10 @@ type GameAction =
   | { type: "PAUSE_TIMER" }
   | { type: "RESET_TIMER" }
   | { type: "TICK" }
-  | { type: "COMPLETE_SESSION" }
+  | { type: "COMPLETE_SESSION"; payload?: { completedFocusSeconds?: number } }
   | { type: "SET_POMODORO_MINUTES"; payload: number }
   | { type: "SET_BREAK_MINUTES"; payload: number }
+  | { type: "SET_POMODORO_CYCLES"; payload: number }
   | { type: "SET_SCENE"; payload: string | null }
   | { type: "SET_CUSTOM_MIX"; payload: Record<string, number> }
   | { type: "SET_MASTER_VOLUME"; payload: number }
@@ -294,6 +315,10 @@ type GameAction =
   | { type: "DELETE_MEMO"; payload: string }
   | { type: "ADD_MEMO_TAG"; payload: string }
   | { type: "DELETE_MEMO_TAG"; payload: string }
+  | { type: "ADD_NOTE"; payload: { content: string } }
+  | { type: "UPDATE_NOTE"; payload: { id: string; content: string } }
+  | { type: "DELETE_NOTE"; payload: string }
+  | { type: "SET_DIARY_ENTRY"; payload: { date: string; content: string } }
   | { type: "ADD_HABIT"; payload: { name: string } }
   | { type: "TOGGLE_HABIT"; payload: string }
   | { type: "DELETE_HABIT"; payload: string }
@@ -307,7 +332,8 @@ type GameAction =
   | { type: "PLAY_MUSIC"; payload: string | null }
   | { type: "PAUSE_MUSIC" }
   | { type: "SET_MUSIC_VOLUME"; payload: number }
-  | { type: "SET_MUSIC_REPEAT_MODE"; payload: "none" | "all" | "one" };
+  | { type: "SET_MUSIC_REPEAT_MODE"; payload: "none" | "all" | "one" }
+  | { type: "SET_CUSTOM_BACKGROUND"; payload: string | null };
 
 // ============ Initial State ============
 const initialState: GameState = {
@@ -319,9 +345,14 @@ const initialState: GameState = {
   lastSessionDate: null,
   pomodoroMinutes: 25,
   breakMinutes: 5,
+  pomodoroCycles: 4,
+  currentCycle: 1,
   isTimerRunning: false,
   timerMode: "focus",
   timeRemaining: 25 * 60,
+  lastCycleCompletionMark: 0,
+  cycleAccumulatedFocusSeconds: 0,
+  cycleAccumulatedPomodoros: 0,
   activeScene: null,
   customMix: {},
   masterVolume: 0.5,
@@ -330,8 +361,11 @@ const initialState: GameState = {
   isMusicPlaying: false,
   musicVolume: 0.5,
   musicRepeatMode: "all",
+  customBackground: null,
   memos: [],
   memoTags: ["学习", "灵感", "待查", "论文"],
+  notes: [],
+  diaryEntries: {},
   habits: [],
   sessions: [],
   heatmapData: [],
@@ -357,6 +391,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         isTimerRunning: false,
+        currentCycle: 1,
+        cycleAccumulatedFocusSeconds: 0,
+        cycleAccumulatedPomodoros: 0,
         timeRemaining: state.timerMode === "focus"
           ? state.pomodoroMinutes * 60
           : state.breakMinutes * 60,
@@ -372,55 +409,81 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         || state.lastSessionDate === today;
 
       if (state.timerMode === "focus") {
-        // 好感度计算：每分钟0.8，但至少获得1点
-        const affectionGain = Math.max(1, Math.floor(state.pomodoroMinutes * 0.8));
+        const completedFocusSeconds = Math.max(0, Math.min(
+          state.pomodoroMinutes * 60,
+          action.payload?.completedFocusSeconds ?? state.pomodoroMinutes * 60,
+        ));
+
+        const accumulatedSeconds = state.cycleAccumulatedFocusSeconds + completedFocusSeconds;
+        const accumulatedPomodoros = state.cycleAccumulatedPomodoros + 1;
+        const cycleFinished = state.currentCycle >= state.pomodoroCycles;
+
+        if (!cycleFinished) {
+          return {
+            ...state,
+            isTimerRunning: true,
+            timerMode: "break",
+            currentCycle: state.currentCycle,
+            timeRemaining: state.breakMinutes * 60,
+            cycleAccumulatedFocusSeconds: accumulatedSeconds,
+            cycleAccumulatedPomodoros: accumulatedPomodoros,
+          };
+        }
+
+        const settledMinutes = Math.floor(accumulatedSeconds / 60);
+        const affectionGain = settledMinutes > 0 ? Math.max(1, Math.floor(settledMinutes * 0.8)) : 0;
         const newStreak = isConsecutive || state.lastSessionDate === today
           ? (state.lastSessionDate === today ? state.currentStreak : state.currentStreak + 1)
           : 1;
 
-        // Update heatmap
         const todayStr = getDateStr();
         const existingDay = state.heatmapData.find((d) => d.date === todayStr);
         const updatedHeatmap = existingDay
           ? state.heatmapData.map((d) =>
               d.date === todayStr
-                ? { ...d, minutes: d.minutes + state.pomodoroMinutes, sessions: d.sessions + 1 }
+                ? { ...d, minutes: d.minutes + settledMinutes, sessions: d.sessions + accumulatedPomodoros }
                 : d
             )
-          : [...state.heatmapData, { date: todayStr, minutes: state.pomodoroMinutes, sessions: 1 }];
+          : [...state.heatmapData, { date: todayStr, minutes: settledMinutes, sessions: accumulatedPomodoros }];
 
         return {
           ...state,
-          affection: state.affection + affectionGain,
-          totalFocusMinutes: state.totalFocusMinutes + state.pomodoroMinutes,
-          sessionsCompleted: state.sessionsCompleted + 1,
+          affection: Math.max(0, (Number.isFinite(state.affection) ? state.affection : 0) + affectionGain),
+          totalFocusMinutes: state.totalFocusMinutes + settledMinutes,
+          sessionsCompleted: state.sessionsCompleted + accumulatedPomodoros,
           currentStreak: newStreak,
           longestStreak: Math.max(state.longestStreak, newStreak),
           lastSessionDate: today,
-          // 休息模式自动启动倒计时
-          isTimerRunning: true,
-          timerMode: "break",
-          timeRemaining: state.breakMinutes * 60,
+          isTimerRunning: false,
+          timerMode: "focus",
+          currentCycle: 1,
+          timeRemaining: state.pomodoroMinutes * 60,
+          lastCycleCompletionMark: Date.now(),
+          cycleAccumulatedFocusSeconds: 0,
+          cycleAccumulatedPomodoros: 0,
           heatmapData: updatedHeatmap,
           sessions: [
             ...state.sessions,
             {
               id: Date.now().toString(),
               startTime: new Date().toISOString(),
-              duration: state.pomodoroMinutes,
+              duration: settledMinutes,
               completed: true,
             },
           ],
         };
-      } else {
-        return {
-          ...state,
-          isTimerRunning: false,
-          timerMode: "focus",
-          timeRemaining: state.pomodoroMinutes * 60,
-        };
       }
+
+      // 休息完成 -> 自动进入下一轮专注并启动
+      return {
+        ...state,
+        isTimerRunning: true,
+        timerMode: "focus",
+        currentCycle: Math.min(state.currentCycle + 1, state.pomodoroCycles),
+        timeRemaining: state.pomodoroMinutes * 60,
+      };
     }
+
 
     case "SET_POMODORO_MINUTES":
       return {
@@ -438,6 +501,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         timeRemaining: state.timerMode === "break" && !state.isTimerRunning
           ? action.payload * 60
           : state.timeRemaining,
+      };
+
+    case "SET_POMODORO_CYCLES":
+      return {
+        ...state,
+        pomodoroCycles: action.payload,
+        currentCycle: Math.min(state.currentCycle, action.payload),
       };
 
     case "SET_SCENE": {
@@ -505,6 +575,39 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case "DELETE_MEMO_TAG":
       return { ...state, memoTags: state.memoTags.filter((tag) => tag !== action.payload) };
 
+    case "ADD_NOTE": {
+      const now = new Date().toISOString();
+      return {
+        ...state,
+        notes: [
+          { id: Date.now().toString(), content: action.payload.content, createdAt: now, updatedAt: now },
+          ...state.notes,
+        ],
+      };
+    }
+
+    case "UPDATE_NOTE":
+      return {
+        ...state,
+        notes: state.notes.map((note) =>
+          note.id === action.payload.id
+            ? { ...note, content: action.payload.content, updatedAt: new Date().toISOString() }
+            : note
+        ),
+      };
+
+    case "DELETE_NOTE":
+      return { ...state, notes: state.notes.filter((note) => note.id !== action.payload) };
+
+    case "SET_DIARY_ENTRY":
+      return {
+        ...state,
+        diaryEntries: {
+          ...state.diaryEntries,
+          [action.payload.date]: action.payload.content,
+        },
+      };
+
     case "ADD_HABIT":
       return {
         ...state,
@@ -568,9 +671,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         currentMusicId: action.payload,
         isMusicPlaying: action.payload !== null,
-        // Stop scene sounds when playing music
-        activeScene: action.payload !== null ? null : state.activeScene,
-        customMix: action.payload !== null ? {} : state.customMix,
       };
 
     case "PAUSE_MUSIC":
@@ -582,8 +682,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case "SET_MUSIC_REPEAT_MODE":
       return { ...state, musicRepeatMode: action.payload };
 
+    case "SET_CUSTOM_BACKGROUND":
+      return { ...state, customBackground: action.payload };
+
     case "LOAD_STATE":
-      return { ...state, ...action.payload };
+      return {
+        ...state,
+        ...action.payload,
+        affection: action.payload.affection !== undefined
+          ? Math.max(0, Number(action.payload.affection) || 0)
+          : state.affection,
+      };
 
     default:
       return state;
@@ -611,10 +720,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem("focus-companion-state");
       if (saved) {
         const parsed = JSON.parse(saved);
+        const safeAffection = Number.isFinite(parsed.affection) ? Math.max(0, Number(parsed.affection)) : 0;
         dispatch({
           type: "LOAD_STATE",
           payload: {
             ...parsed,
+            affection: safeAffection,
             isTimerRunning: false,
             timeRemaining: parsed.timerMode === "focus"
               ? (parsed.pomodoroMinutes || 25) * 60
@@ -667,11 +778,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, []); // 只在组件挂载时执行一次
 
-  const currentPlantStage = [...PLANT_STAGES].reverse().find((s) => state.affection >= s.minAffection) || PLANT_STAGES[0];
+  const safeAffection = Number.isFinite(state.affection) ? Number(state.affection) : 0;
+  const currentPlantStage = [...PLANT_STAGES].reverse().find((s) => safeAffection >= s.minAffection) || PLANT_STAGES[0];
   const currentIndex = PLANT_STAGES.indexOf(currentPlantStage);
   const nextPlantStage = currentIndex < PLANT_STAGES.length - 1 ? PLANT_STAGES[currentIndex + 1] : null;
   const progressToNext = nextPlantStage
-    ? ((state.affection - currentPlantStage.minAffection) / (nextPlantStage.minAffection - currentPlantStage.minAffection)) * 100
+    ? ((safeAffection - currentPlantStage.minAffection) / (nextPlantStage.minAffection - currentPlantStage.minAffection)) * 100
     : 100;
 
   const getDialogForType = useCallback(
