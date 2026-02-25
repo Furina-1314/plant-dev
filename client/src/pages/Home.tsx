@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from "react";
 import TimerPanel from "@/components/TimerPanel";
 import SoundPanel from "@/components/SoundPanel";
+import MusicPanel from "@/components/MusicPanel";
 import PlantInfo from "@/components/PlantInfo";
 import NotesPanel from "@/components/NotesPanel";
 import HabitsPanel from "@/components/HabitsPanel";
@@ -30,7 +31,7 @@ const CLOUDS_BG = "/assets/clouds-bg.png";
 const HERO_BG = "/assets/hero-bg.png";
 
 type RightTab = "notes" | "habits" | "stats";
-type MobilePanel = "timer" | "sounds" | "plant" | "notes" | "habits" | "stats" | null;
+type MobilePanel = "timer" | "music" | "sounds" | "plant" | "notes" | "habits" | "stats" | null;
 
 export default function Home() {
   const [rightTab, setRightTab] = useState<RightTab>("notes");
@@ -48,6 +49,7 @@ export default function Home() {
 
   const mobileTabs = [
     { id: "timer" as MobilePanel, label: "计时", icon: Timer },
+    { id: "music" as MobilePanel, label: "音乐", icon: Volume2 },
     { id: "sounds" as MobilePanel, label: "音效", icon: Volume2 },
     { id: "plant" as MobilePanel, label: "植物", icon: Sprout },
     { id: "notes" as MobilePanel, label: "笔记", icon: FileText },
@@ -89,11 +91,15 @@ export default function Home() {
         {/* 左侧面板 - 移除 Logo，空间留给音效 */}
         <div className={`shrink-0 h-full flex flex-col transition-all duration-300 ${leftCollapsed ? "w-0 opacity-0" : "w-[300px] opacity-100"}`}>
           <div className="h-full p-4 flex flex-col gap-3 overflow-hidden">
-            {/* 番茄钟 - 高度 360px，确保数字在圆圈内 */}
+            {/* 番茄钟 */}
             <div className="shrink-0">
               <TimerPanel compact />
             </div>
-            {/* 音效面板 - 占据剩余空间 */}
+            {/* 本地音乐播放器 */}
+            <div className="shrink-0">
+              <MusicPanel />
+            </div>
+            {/* 音效面板 */}
             <div className="flex-1 min-h-0">
               <SoundPanel />
             </div>
@@ -101,7 +107,7 @@ export default function Home() {
         </div>
 
         {/* 左侧切换按钮 */}
-        <button onClick={() => setLeftCollapsed(!leftCollapsed)} className="absolute left-0 top-1/2 -translate-y-1/2 z-50 w-6 h-14 bg-white/90 shadow-lg rounded-r-xl flex items-center justify-center hover:bg-white transition-all border-y border-r border-gray-200">
+        <button onClick={() => setLeftCollapsed(!leftCollapsed)} className="absolute left-0 top-1/2 -translate-y-1/2 z-[90] w-6 h-14 bg-white/90 shadow-lg rounded-r-xl flex items-center justify-center hover:bg-white transition-all border-y border-r border-gray-200">
           {leftCollapsed ? <ChevronRight size={16} className="text-gray-600" /> : <ChevronLeft size={16} className="text-gray-600" />}
         </button>
 
@@ -116,7 +122,7 @@ export default function Home() {
         </div>
 
         {/* 右侧切换按钮 */}
-        <button onClick={() => setRightCollapsed(!rightCollapsed)} className="absolute right-0 top-1/2 -translate-y-1/2 z-50 w-6 h-14 bg-white/90 shadow-lg rounded-l-xl flex items-center justify-center hover:bg-white transition-all border-y border-l border-gray-200">
+        <button onClick={() => setRightCollapsed(!rightCollapsed)} className="absolute right-0 top-1/2 -translate-y-1/2 z-[90] w-6 h-14 bg-white/90 shadow-lg rounded-l-xl flex items-center justify-center hover:bg-white transition-all border-y border-l border-gray-200">
           {rightCollapsed ? <ChevronLeft size={16} className="text-gray-600" /> : <ChevronRight size={16} className="text-gray-600" />}
         </button>
 
@@ -171,6 +177,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">
                 {mobilePanel === "timer" && "番茄钟"}
+                {mobilePanel === "music" && "本地音乐"}
                 {mobilePanel === "sounds" && "环境音效"}
                 {mobilePanel === "plant" && "植物信息"}
                 {mobilePanel === "notes" && "灵感备忘"}
@@ -182,6 +189,7 @@ export default function Home() {
               </button>
             </div>
             {mobilePanel === "timer" && <TimerPanel />}
+            {mobilePanel === "music" && <MusicPanel />}
             {mobilePanel === "sounds" && <SoundPanel />}
             {mobilePanel === "plant" && <PlantInfo />}
             {mobilePanel === "notes" && <NotesPanel />}

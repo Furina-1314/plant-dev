@@ -65,6 +65,8 @@ export interface GameState {
   // Pomodoro
   pomodoroMinutes: number;
   breakMinutes: number;
+  pomodoroCycles: number;
+  currentCycle: number;
   isTimerRunning: boolean;
   timerMode: "focus" | "break";
   timeRemaining: number;
@@ -286,6 +288,7 @@ type GameAction =
   | { type: "COMPLETE_SESSION" }
   | { type: "SET_POMODORO_MINUTES"; payload: number }
   | { type: "SET_BREAK_MINUTES"; payload: number }
+  | { type: "SET_POMODORO_CYCLES"; payload: number }
   | { type: "SET_SCENE"; payload: string | null }
   | { type: "SET_CUSTOM_MIX"; payload: Record<string, number> }
   | { type: "SET_MASTER_VOLUME"; payload: number }
@@ -319,6 +322,8 @@ const initialState: GameState = {
   lastSessionDate: null,
   pomodoroMinutes: 25,
   breakMinutes: 5,
+  pomodoroCycles: 4,
+  currentCycle: 1,
   isTimerRunning: false,
   timerMode: "focus",
   timeRemaining: 25 * 60,
@@ -357,6 +362,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         isTimerRunning: false,
+        currentCycle: 1,
         timeRemaining: state.timerMode === "focus"
           ? state.pomodoroMinutes * 60
           : state.breakMinutes * 60,
@@ -389,6 +395,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             )
           : [...state.heatmapData, { date: todayStr, minutes: state.pomodoroMinutes, sessions: 1 }];
 
+        const hasCompletedAllCycles = state.currentCycle >= state.pomodoroCycles;
+
         return {
           ...state,
           affection: state.affection + affectionGain,
@@ -397,10 +405,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           currentStreak: newStreak,
           longestStreak: Math.max(state.longestStreak, newStreak),
           lastSessionDate: today,
-          // 休息模式自动启动倒计时
-          isTimerRunning: true,
-          timerMode: "break",
-          timeRemaining: state.breakMinutes * 60,
+          // 未达到循环上限则进入休息；达到上限则返回下一轮专注待开始
+          isTimerRunning: hasCompletedAllCycles ? false : true,
+          timerMode: hasCompletedAllCycles ? "focus" : "break",
+          currentCycle: hasCompletedAllCycles ? 1 : state.currentCycle + 1,
+          timeRemaining: hasCompletedAllCycles ? state.pomodoroMinutes * 60 : state.breakMinutes * 60,
           heatmapData: updatedHeatmap,
           sessions: [
             ...state.sessions,
@@ -417,6 +426,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state,
           isTimerRunning: false,
           timerMode: "focus",
+          currentCycle: state.currentCycle,
           timeRemaining: state.pomodoroMinutes * 60,
         };
       }
@@ -438,6 +448,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         timeRemaining: state.timerMode === "break" && !state.isTimerRunning
           ? action.payload * 60
           : state.timeRemaining,
+      };
+
+    case "SET_POMODORO_CYCLES":
+      return {
+        ...state,
+        pomodoroCycles: action.payload,
+        currentCycle: Math.min(state.currentCycle, action.payload),
       };
 
     case "SET_SCENE": {
