@@ -686,7 +686,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, customBackground: action.payload };
 
     case "LOAD_STATE":
-      return { ...state, ...action.payload };
+      return {
+        ...state,
+        ...action.payload,
+        affection: action.payload.affection !== undefined
+          ? Math.max(0, Number(action.payload.affection) || 0)
+          : state.affection,
+      };
 
     default:
       return state;
@@ -772,11 +778,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, []); // 只在组件挂载时执行一次
 
-  const currentPlantStage = [...PLANT_STAGES].reverse().find((s) => state.affection >= s.minAffection) || PLANT_STAGES[0];
+  const safeAffection = Number.isFinite(state.affection) ? Number(state.affection) : 0;
+  const currentPlantStage = [...PLANT_STAGES].reverse().find((s) => safeAffection >= s.minAffection) || PLANT_STAGES[0];
   const currentIndex = PLANT_STAGES.indexOf(currentPlantStage);
   const nextPlantStage = currentIndex < PLANT_STAGES.length - 1 ? PLANT_STAGES[currentIndex + 1] : null;
   const progressToNext = nextPlantStage
-    ? ((state.affection - currentPlantStage.minAffection) / (nextPlantStage.minAffection - currentPlantStage.minAffection)) * 100
+    ? ((safeAffection - currentPlantStage.minAffection) / (nextPlantStage.minAffection - currentPlantStage.minAffection)) * 100
     : 100;
 
   const getDialogForType = useCallback(

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { useGame } from "@/contexts/GameContext";
 
 let sharedAudio: HTMLAudioElement | null = null;
+let primaryMusicControllerAttached = false;
 
 function getAudio() {
   if (!sharedAudio) {
@@ -15,6 +16,7 @@ export function useMusicPlayer() {
   const { state, dispatch } = useGame();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loadedTrackIdRef = useRef<string | null>(null);
+  const isPrimaryControllerRef = useRef(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -23,11 +25,26 @@ export function useMusicPlayer() {
   }, []);
 
   useEffect(() => {
+    if (!primaryMusicControllerAttached) {
+      primaryMusicControllerAttached = true;
+      isPrimaryControllerRef.current = true;
+    }
+
+    return () => {
+      if (isPrimaryControllerRef.current) {
+        primaryMusicControllerAttached = false;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
     audioRef.current.volume = state.musicVolume;
   }, [state.musicVolume]);
 
   useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
     const handleEnded = () => {
@@ -78,6 +95,7 @@ export function useMusicPlayer() {
   }, [state.musicTracks, state.currentMusicId, state.musicRepeatMode, dispatch]);
 
   useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
     const currentTrack = state.musicTracks.find((t) => t.id === state.currentMusicId);

@@ -132,11 +132,11 @@ export default function SoundPanel() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-0.5 min-h-0">
+      <div className="flex-1 overflow-y-auto px-1 py-1 min-h-0">
         {mode === "scenes" ? (
           <div className="space-y-1.5">
             {SOUND_SCENES.map((scene) => (
-              <button key={scene.id} onClick={() => handleSceneSelect(scene.id)} className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all text-left ${state.activeScene === scene.id ? "bg-purple-100 text-purple-700 ring-1 ring-purple-300" : "bg-gray-50 hover:bg-gray-100 text-gray-700"}`}>
+              <button key={scene.id} onClick={() => handleSceneSelect(scene.id)} className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all text-left ${state.activeScene === scene.id ? "bg-purple-100 text-purple-700 border border-purple-300" : "bg-gray-50 hover:bg-gray-100 text-gray-700 border border-transparent"}`}>
                 <span className="text-lg">{SCENE_ICONS[scene.id]}</span>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{scene.name}</div>
