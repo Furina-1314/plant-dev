@@ -18,6 +18,13 @@ export interface MemoEntry {
   updatedAt: string;
 }
 
+export interface NoteEntry {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HabitEntry {
   id: string;
   name: string;
@@ -83,9 +90,15 @@ export interface GameState {
   musicVolume: number;
   musicRepeatMode: "none" | "all" | "one"; // 顺序播放, 列表循环, 单曲循环
 
-  // Memos (was notes)
+  // Todos
   memos: MemoEntry[];
   memoTags: string[];
+
+  // Notes
+  notes: NoteEntry[];
+
+  // Calendar Diary
+  diaryEntries: Record<string, string>;
 
   // Habits
   habits: HabitEntry[];
@@ -297,6 +310,10 @@ type GameAction =
   | { type: "DELETE_MEMO"; payload: string }
   | { type: "ADD_MEMO_TAG"; payload: string }
   | { type: "DELETE_MEMO_TAG"; payload: string }
+  | { type: "ADD_NOTE"; payload: { content: string } }
+  | { type: "UPDATE_NOTE"; payload: { id: string; content: string } }
+  | { type: "DELETE_NOTE"; payload: string }
+  | { type: "SET_DIARY_ENTRY"; payload: { date: string; content: string } }
   | { type: "ADD_HABIT"; payload: { name: string } }
   | { type: "TOGGLE_HABIT"; payload: string }
   | { type: "DELETE_HABIT"; payload: string }
@@ -337,6 +354,8 @@ const initialState: GameState = {
   musicRepeatMode: "all",
   memos: [],
   memoTags: ["学习", "灵感", "待查", "论文"],
+  notes: [],
+  diaryEntries: {},
   habits: [],
   sessions: [],
   heatmapData: [],
@@ -521,6 +540,39 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DELETE_MEMO_TAG":
       return { ...state, memoTags: state.memoTags.filter((tag) => tag !== action.payload) };
+
+    case "ADD_NOTE": {
+      const now = new Date().toISOString();
+      return {
+        ...state,
+        notes: [
+          { id: Date.now().toString(), content: action.payload.content, createdAt: now, updatedAt: now },
+          ...state.notes,
+        ],
+      };
+    }
+
+    case "UPDATE_NOTE":
+      return {
+        ...state,
+        notes: state.notes.map((note) =>
+          note.id === action.payload.id
+            ? { ...note, content: action.payload.content, updatedAt: new Date().toISOString() }
+            : note
+        ),
+      };
+
+    case "DELETE_NOTE":
+      return { ...state, notes: state.notes.filter((note) => note.id !== action.payload) };
+
+    case "SET_DIARY_ENTRY":
+      return {
+        ...state,
+        diaryEntries: {
+          ...state.diaryEntries,
+          [action.payload.date]: action.payload.content,
+        },
+      };
 
     case "ADD_HABIT":
       return {

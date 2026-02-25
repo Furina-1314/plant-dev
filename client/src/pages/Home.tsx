@@ -5,6 +5,7 @@ import MusicPanel from "@/components/MusicPanel";
 import PlantInfo from "@/components/PlantInfo";
 import NotesPanel from "@/components/NotesPanel";
 import HabitsPanel from "@/components/HabitsPanel";
+import NotesTextPanel from "@/components/NotesTextPanel";
 import StatsPanel from "@/components/StatsPanel";
 import ProfilePage from "@/components/ProfilePage";
 import CalendarView from "@/components/CalendarView";
@@ -30,11 +31,11 @@ const PlantScene = lazy(() => import("@/components/PlantScene"));
 const CLOUDS_BG = "/assets/clouds-bg.png";
 const HERO_BG = "/assets/hero-bg.png";
 
-type RightTab = "notes" | "habits" | "stats";
-type MobilePanel = "timer" | "music" | "sounds" | "plant" | "notes" | "habits" | "stats" | null;
+type RightTab = "todo" | "habits" | "notes" | "stats";
+type MobilePanel = "timer" | "music" | "sounds" | "plant" | "todo" | "notes" | "habits" | "stats" | null;
 
 export default function Home() {
-  const [rightTab, setRightTab] = useState<RightTab>("notes");
+  const [rightTab, setRightTab] = useState<RightTab>("todo");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null);
@@ -42,8 +43,9 @@ export default function Home() {
   const [showCalendar, setShowCalendar] = useState(false);
 
   const rightTabs: { id: RightTab; label: string; icon: typeof FileText }[] = [
-    { id: "notes", label: "笔记", icon: FileText },
+    { id: "todo", label: "待办", icon: FileText },
     { id: "habits", label: "习惯", icon: Target },
+    { id: "notes", label: "笔记", icon: FileText },
     { id: "stats", label: "统计", icon: BarChart3 },
   ];
 
@@ -52,6 +54,7 @@ export default function Home() {
     { id: "music" as MobilePanel, label: "音乐", icon: Volume2 },
     { id: "sounds" as MobilePanel, label: "音效", icon: Volume2 },
     { id: "plant" as MobilePanel, label: "植物", icon: Sprout },
+    { id: "todo" as MobilePanel, label: "待办", icon: FileText },
     { id: "notes" as MobilePanel, label: "笔记", icon: FileText },
     { id: "habits" as MobilePanel, label: "习惯", icon: Target },
     { id: "stats" as MobilePanel, label: "统计", icon: BarChart3 },
@@ -59,8 +62,9 @@ export default function Home() {
 
   const renderRightContent = () => {
     switch (rightTab) {
-      case "notes": return <NotesPanel />;
+      case "todo": return <NotesPanel />;
       case "habits": return <HabitsPanel />;
+      case "notes": return <NotesTextPanel />;
       case "stats": return <StatsPanel />;
       default: return <NotesPanel />;
     }
@@ -77,7 +81,7 @@ export default function Home() {
       <FloatingParticles />
 
       {/* 顶部工具栏 */}
-      <div className="absolute top-4 right-4 z-40 flex gap-2">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex gap-2">
         <button onClick={() => setShowCalendar(true)} className="p-2.5 rounded-xl bg-white/80 shadow-lg hover:bg-white transition-colors text-gray-600" title="日历">
           <Calendar size={20} />
         </button>
@@ -180,7 +184,8 @@ export default function Home() {
                 {mobilePanel === "music" && "本地音乐"}
                 {mobilePanel === "sounds" && "环境音效"}
                 {mobilePanel === "plant" && "植物信息"}
-                {mobilePanel === "notes" && "灵感备忘"}
+                {mobilePanel === "todo" && "待办"}
+                {mobilePanel === "notes" && "笔记"}
                 {mobilePanel === "habits" && "每日习惯"}
                 {mobilePanel === "stats" && "专注统计"}
               </h2>
@@ -192,7 +197,8 @@ export default function Home() {
             {mobilePanel === "music" && <MusicPanel />}
             {mobilePanel === "sounds" && <SoundPanel />}
             {mobilePanel === "plant" && <PlantInfo />}
-            {mobilePanel === "notes" && <NotesPanel />}
+            {mobilePanel === "todo" && <NotesPanel />}
+            {mobilePanel === "notes" && <NotesTextPanel />}
             {mobilePanel === "habits" && <HabitsPanel />}
             {mobilePanel === "stats" && <StatsPanel />}
           </div>

@@ -120,7 +120,7 @@ export default function PlantInfo() {
       {/* 植物预览弹窗 */}
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPreview(false)}>
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 max-w-sm w-full max-h-[88vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">植物成长预览</h3>
               <button onClick={() => setShowPreview(false)} className="p-2 rounded-full hover:bg-gray-100">
@@ -129,11 +129,11 @@ export default function PlantInfo() {
             </div>
             
             {/* 预览显示 */}
-            <div className="bg-gradient-to-b from-sky-100 to-green-100 rounded-2xl p-8 mb-4 text-center">
-              <div className="text-8xl mb-3">{STAGE_ICONS[PLANT_STAGES[previewStage].image]}</div>
-              <div className="text-xl font-bold text-gray-800">{STAGE_NAMES[PLANT_STAGES[previewStage].image]}</div>
-              <div className="text-sm text-gray-600 mt-1">{PLANT_STAGES[previewStage].description}</div>
-              <div className="text-xs text-gray-500 mt-2">需要 {PLANT_STAGES[previewStage].minAffection} 好感度</div>
+            <div className="bg-gradient-to-b from-sky-100 to-green-100 rounded-2xl p-4 mb-4 text-center">
+              <div className="text-6xl mb-2">{STAGE_ICONS[PLANT_STAGES[previewStage].image]}</div>
+              <div className="text-lg font-bold text-gray-800">{STAGE_NAMES[PLANT_STAGES[previewStage].image]}</div>
+              <div className="text-xs text-gray-600 mt-1">{PLANT_STAGES[previewStage].description}</div>
+              <div className="text-[11px] text-gray-500 mt-2">需要 {PLANT_STAGES[previewStage].minAffection} 好感度</div>
             </div>
 
             {/* 导航 */}
