@@ -1,54 +1,105 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useGame } from "@/contexts/GameContext";
+
+let sharedAudio: HTMLAudioElement | null = null;
+let primaryMusicControllerAttached = false;
+
+function getAudio() {
+  if (!sharedAudio) {
+    sharedAudio = new Audio();
+    sharedAudio.preload = "metadata";
+  }
+  return sharedAudio;
+}
 
 export function useMusicPlayer() {
   const { state, dispatch } = useGame();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loadedTrackIdRef = useRef<string | null>(null);
+  const isPrimaryControllerRef = useRef(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
-  // Initialize audio element
   useEffect(() => {
-    audioRef.current = new Audio();
-    
+    audioRef.current = getAudio();
+  }, []);
+
+  useEffect(() => {
+    if (!primaryMusicControllerAttached) {
+      primaryMusicControllerAttached = true;
+      isPrimaryControllerRef.current = true;
+    }
+
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        audioRef.current = null;
+      if (isPrimaryControllerRef.current) {
+        primaryMusicControllerAttached = false;
       }
     };
   }, []);
 
-  // Update volume
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = state.musicVolume;
-    }
+    if (!isPrimaryControllerRef.current) return;
+    if (!audioRef.current) return;
+    audioRef.current.volume = state.musicVolume;
   }, [state.musicVolume]);
 
-  // Handle track ended - play next based on repeat mode
   useEffect(() => {
+    if (!audioRef.current) return;
+
+    const readAudioProgress = () => {
+      const nextDuration = Number.isFinite(audioRef.current?.duration) ? Number(audioRef.current?.duration) : 0;
+      const nextTime = Number.isFinite(audioRef.current?.currentTime) ? Number(audioRef.current?.currentTime) : 0;
+      setDuration(nextDuration);
+      setCurrentTime(nextTime);
+    };
+
+    // 初始化当前显示，避免面板首次打开时进度条不同步
+    readAudioProgress();
+
+    const handleTimeUpdate = () => readAudioProgress();
+    const handleLoadedMetadata = () => readAudioProgress();
+    const handleDurationChange = () => readAudioProgress();
+
+    audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
+    audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audioRef.current.addEventListener("durationchange", handleDurationChange);
+
+    // 某些浏览器/场景下 timeupdate 触发不稳定，增加轮询兜底，避免进度条卡在 00:00
+    const poll = window.setInterval(readAudioProgress, 250);
+
+    return () => {
+      window.clearInterval(poll);
+      audioRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
+      audioRef.current?.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audioRef.current?.removeEventListener("durationchange", handleDurationChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
     const handleEnded = () => {
       const { musicTracks, currentMusicId, musicRepeatMode } = state;
-      
+
       if (!currentMusicId || musicTracks.length === 0) {
         dispatch({ type: "PAUSE_MUSIC" });
         return;
       }
 
       const currentIndex = musicTracks.findIndex((t) => t.id === currentMusicId);
-      
+      if (currentIndex < 0) {
+        dispatch({ type: "PAUSE_MUSIC" });
+        return;
+      }
+
       if (musicRepeatMode === "one") {
-        // 单曲循环：重新播放当前
         audioRef.current!.currentTime = 0;
         audioRef.current!.play().catch(() => dispatch({ type: "PAUSE_MUSIC" }));
       } else if (musicRepeatMode === "all") {
-        // 列表循环：播放下一首，到末尾回到第一首
         const nextIndex = (currentIndex + 1) % musicTracks.length;
         dispatch({ type: "PLAY_MUSIC", payload: musicTracks[nextIndex].id });
       } else {
-        // 顺序播放：播放下一首，到末尾停止
         const nextIndex = currentIndex + 1;
         if (nextIndex < musicTracks.length) {
           dispatch({ type: "PLAY_MUSIC", payload: musicTracks[nextIndex].id });
@@ -59,19 +110,26 @@ export function useMusicPlayer() {
     };
 
     audioRef.current.addEventListener("ended", handleEnded);
+
     return () => {
       audioRef.current?.removeEventListener("ended", handleEnded);
     };
   }, [state.musicTracks, state.currentMusicId, state.musicRepeatMode, dispatch]);
 
-  // Handle play/pause and track changes
   useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
     const currentTrack = state.musicTracks.find((t) => t.id === state.currentMusicId);
 
+    if (state.isMusicPlaying && !currentTrack && state.musicTracks.length > 0) {
+      dispatch({ type: "PLAY_MUSIC", payload: state.musicTracks[0].id });
+      return;
+    }
+
     if (state.isMusicPlaying && currentTrack) {
-      if (audioRef.current.src !== currentTrack.url) {
+      if (loadedTrackIdRef.current !== currentTrack.id) {
+        loadedTrackIdRef.current = currentTrack.id;
         audioRef.current.src = currentTrack.url;
         audioRef.current.load();
       }
@@ -101,21 +159,35 @@ export function useMusicPlayer() {
 
   const playNext = useCallback(() => {
     const { musicTracks, currentMusicId } = state;
-    if (!currentMusicId || musicTracks.length === 0) return;
-    
+    if (musicTracks.length === 0) return;
+    if (!currentMusicId) {
+      dispatch({ type: "PLAY_MUSIC", payload: musicTracks[0].id });
+      return;
+    }
+
     const currentIndex = musicTracks.findIndex((t) => t.id === currentMusicId);
-    const nextIndex = (currentIndex + 1) % musicTracks.length;
+    const nextIndex = (Math.max(0, currentIndex) + 1) % musicTracks.length;
     dispatch({ type: "PLAY_MUSIC", payload: musicTracks[nextIndex].id });
   }, [state.musicTracks, state.currentMusicId, dispatch]);
 
   const playPrevious = useCallback(() => {
     const { musicTracks, currentMusicId } = state;
-    if (!currentMusicId || musicTracks.length === 0) return;
-    
+    if (musicTracks.length === 0) return;
+    if (!currentMusicId) {
+      dispatch({ type: "PLAY_MUSIC", payload: musicTracks[0].id });
+      return;
+    }
+
     const currentIndex = musicTracks.findIndex((t) => t.id === currentMusicId);
-    const prevIndex = currentIndex === 0 ? musicTracks.length - 1 : currentIndex - 1;
+    const prevIndex = currentIndex <= 0 ? musicTracks.length - 1 : currentIndex - 1;
     dispatch({ type: "PLAY_MUSIC", payload: musicTracks[prevIndex].id });
   }, [state.musicTracks, state.currentMusicId, dispatch]);
+
+  const seekTo = useCallback((time: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  }, []);
 
   return {
     playTrack,
@@ -129,5 +201,8 @@ export function useMusicPlayer() {
     setVolume: (v: number) => dispatch({ type: "SET_MUSIC_VOLUME", payload: v }),
     repeatMode: state.musicRepeatMode,
     setRepeatMode: (mode: "none" | "all" | "one") => dispatch({ type: "SET_MUSIC_REPEAT_MODE", payload: mode }),
+    currentTime,
+    duration,
+    seekTo,
   };
 }
