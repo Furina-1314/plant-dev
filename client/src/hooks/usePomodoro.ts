@@ -66,6 +66,12 @@ export function usePomodoro() {
   const start = useCallback(() => dispatch({ type: "START_TIMER" }), [dispatch]);
   const pause = useCallback(() => dispatch({ type: "PAUSE_TIMER" }), [dispatch]);
   const reset = useCallback(() => dispatch({ type: "RESET_TIMER" }), [dispatch]);
+  const fastForward = useCallback(() => {
+    if (state.timerMode !== "focus") return;
+    const total = state.pomodoroMinutes * 60;
+    const completed = Math.max(0, total - state.timeRemaining);
+    dispatch({ type: "COMPLETE_SESSION", payload: { completedFocusSeconds: completed } });
+  }, [dispatch, state.timerMode, state.pomodoroMinutes, state.timeRemaining]);
 
   const formatTime = useCallback((seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -86,5 +92,6 @@ export function usePomodoro() {
     start,
     pause,
     reset,
+    fastForward,
   };
 }
