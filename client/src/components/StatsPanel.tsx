@@ -1,6 +1,6 @@
 import { useGame } from "@/contexts/GameContext";
 import { useMemo } from "react";
-import { BarChart3, Clock, Zap, Trophy, TrendingUp, Flame, Award } from "lucide-react";
+import { BarChart3, Clock, Zap, Trophy, TrendingUp, Flame, Award, CheckSquare } from "lucide-react";
 
 export default function StatsPanel() {
   const { state } = useGame();
@@ -29,6 +29,8 @@ export default function StatsPanel() {
   const weekTotalMinutes = weekData.reduce((sum, d) => sum + d.minutes, 0);
   const weekTotalSessions = weekData.reduce((sum, d) => sum + d.sessions, 0);
   const avgMinutes = Math.round(weekTotalMinutes / 7);
+  const todayDateStr = new Date().toDateString();
+  const todayCompletedTodos = state.memos.filter((m) => m.done && new Date(m.updatedAt).toDateString() === todayDateStr).length;
   const bestDay = weekData.reduce((best, current) => 
     current.minutes > best.minutes ? current : best
   , weekData[0]);
@@ -102,7 +104,7 @@ export default function StatsPanel() {
       </div>
 
       {/* 今日数据 */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-blue-50 rounded-xl p-3 text-center">
           <Clock size={16} className="mx-auto mb-1 text-blue-500" />
           <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{todayMinutes}</div>
@@ -112,6 +114,11 @@ export default function StatsPanel() {
           <Zap size={16} className="mx-auto mb-1 text-amber-500" />
           <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{todaySessions}</div>
           <div className="text-[10px] text-gray-500">今日番茄数</div>
+        </div>
+        <div className="bg-emerald-50 rounded-xl p-3 text-center">
+          <CheckSquare size={16} className="mx-auto mb-1 text-emerald-500" />
+          <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "var(--font-mono)" }}>{todayCompletedTodos}</div>
+          <div className="text-[10px] text-gray-500">今日完成待办</div>
         </div>
       </div>
 

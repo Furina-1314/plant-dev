@@ -18,6 +18,13 @@ export interface MemoEntry {
   updatedAt: string;
 }
 
+export interface NoteEntry {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HabitEntry {
   id: string;
   name: string;
@@ -65,6 +72,8 @@ export interface GameState {
   // Pomodoro
   pomodoroMinutes: number;
   breakMinutes: number;
+  pomodoroCycles: number;
+  currentCycle: number;
   isTimerRunning: boolean;
   timerMode: "focus" | "break";
   timeRemaining: number;
@@ -81,9 +90,15 @@ export interface GameState {
   musicVolume: number;
   musicRepeatMode: "none" | "all" | "one"; // 顺序播放, 列表循环, 单曲循环
 
-  // Memos (was notes)
+  // Todos
   memos: MemoEntry[];
   memoTags: string[];
+
+  // Notes
+  notes: NoteEntry[];
+
+  // Calendar Diary
+  diaryEntries: Record<string, string>;
 
   // Habits
   habits: HabitEntry[];
@@ -286,6 +301,7 @@ type GameAction =
   | { type: "COMPLETE_SESSION" }
   | { type: "SET_POMODORO_MINUTES"; payload: number }
   | { type: "SET_BREAK_MINUTES"; payload: number }
+  | { type: "SET_POMODORO_CYCLES"; payload: number }
   | { type: "SET_SCENE"; payload: string | null }
   | { type: "SET_CUSTOM_MIX"; payload: Record<string, number> }
   | { type: "SET_MASTER_VOLUME"; payload: number }
@@ -294,6 +310,10 @@ type GameAction =
   | { type: "DELETE_MEMO"; payload: string }
   | { type: "ADD_MEMO_TAG"; payload: string }
   | { type: "DELETE_MEMO_TAG"; payload: string }
+  | { type: "ADD_NOTE"; payload: { content: string } }
+  | { type: "UPDATE_NOTE"; payload: { id: string; content: string } }
+  | { type: "DELETE_NOTE"; payload: string }
+  | { type: "SET_DIARY_ENTRY"; payload: { date: string; content: string } }
   | { type: "ADD_HABIT"; payload: { name: string } }
   | { type: "TOGGLE_HABIT"; payload: string }
   | { type: "DELETE_HABIT"; payload: string }
@@ -319,6 +339,8 @@ const initialState: GameState = {
   lastSessionDate: null,
   pomodoroMinutes: 25,
   breakMinutes: 5,
+  pomodoroCycles: 4,
+  currentCycle: 1,
   isTimerRunning: false,
   timerMode: "focus",
   timeRemaining: 25 * 60,
@@ -332,6 +354,8 @@ const initialState: GameState = {
   musicRepeatMode: "all",
   memos: [],
   memoTags: ["学习", "灵感", "待查", "论文"],
+  notes: [],
+  diaryEntries: {},
   habits: [],
   sessions: [],
   heatmapData: [],
@@ -357,6 +381,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         isTimerRunning: false,
+        currentCycle: 1,
         timeRemaining: state.timerMode === "focus"
           ? state.pomodoroMinutes * 60
           : state.breakMinutes * 60,
@@ -389,6 +414,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             )
           : [...state.heatmapData, { date: todayStr, minutes: state.pomodoroMinutes, sessions: 1 }];
 
+        const hasCompletedAllCycles = state.currentCycle >= state.pomodoroCycles;
+
         return {
           ...state,
           affection: state.affection + affectionGain,
@@ -397,10 +424,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           currentStreak: newStreak,
           longestStreak: Math.max(state.longestStreak, newStreak),
           lastSessionDate: today,
-          // 休息模式自动启动倒计时
-          isTimerRunning: true,
-          timerMode: "break",
-          timeRemaining: state.breakMinutes * 60,
+          // 未达到循环上限则进入休息；达到上限则返回下一轮专注待开始
+          isTimerRunning: hasCompletedAllCycles ? false : true,
+          timerMode: hasCompletedAllCycles ? "focus" : "break",
+          currentCycle: hasCompletedAllCycles ? 1 : state.currentCycle + 1,
+          timeRemaining: hasCompletedAllCycles ? state.pomodoroMinutes * 60 : state.breakMinutes * 60,
           heatmapData: updatedHeatmap,
           sessions: [
             ...state.sessions,
@@ -417,6 +445,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state,
           isTimerRunning: false,
           timerMode: "focus",
+          currentCycle: state.currentCycle,
           timeRemaining: state.pomodoroMinutes * 60,
         };
       }
@@ -438,6 +467,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         timeRemaining: state.timerMode === "break" && !state.isTimerRunning
           ? action.payload * 60
           : state.timeRemaining,
+      };
+
+    case "SET_POMODORO_CYCLES":
+      return {
+        ...state,
+        pomodoroCycles: action.payload,
+        currentCycle: Math.min(state.currentCycle, action.payload),
       };
 
     case "SET_SCENE": {
@@ -504,6 +540,39 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DELETE_MEMO_TAG":
       return { ...state, memoTags: state.memoTags.filter((tag) => tag !== action.payload) };
+
+    case "ADD_NOTE": {
+      const now = new Date().toISOString();
+      return {
+        ...state,
+        notes: [
+          { id: Date.now().toString(), content: action.payload.content, createdAt: now, updatedAt: now },
+          ...state.notes,
+        ],
+      };
+    }
+
+    case "UPDATE_NOTE":
+      return {
+        ...state,
+        notes: state.notes.map((note) =>
+          note.id === action.payload.id
+            ? { ...note, content: action.payload.content, updatedAt: new Date().toISOString() }
+            : note
+        ),
+      };
+
+    case "DELETE_NOTE":
+      return { ...state, notes: state.notes.filter((note) => note.id !== action.payload) };
+
+    case "SET_DIARY_ENTRY":
+      return {
+        ...state,
+        diaryEntries: {
+          ...state.diaryEntries,
+          [action.payload.date]: action.payload.content,
+        },
+      };
 
     case "ADD_HABIT":
       return {
