@@ -43,18 +43,44 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     input.accept = ".json";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            JSON.parse(event.target?.result as string);
-            alert("数据导入功能需要在 GameContext 中实现");
-          } catch {
-            alert("文件格式错误");
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+
+          if (parsed?.stats && parsed?.sessions) {
+            dispatch({
+              type: "LOAD_STATE",
+              payload: {
+                affection: Number(parsed.stats.affection || 0),
+                totalFocusMinutes: Number(parsed.stats.totalFocusMinutes || 0),
+                sessionsCompleted: Number(parsed.stats.sessionsCompleted || 0),
+                currentStreak: Number(parsed.stats.currentStreak || 0),
+                longestStreak: Number(parsed.stats.longestStreak || 0),
+                sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+                habits: Array.isArray(parsed.habits) ? parsed.habits : [],
+                memos: Array.isArray(parsed.memos) ? parsed.memos : [],
+                heatmapData: Array.isArray(parsed.heatmapData) ? parsed.heatmapData : [],
+              },
+            });
+            alert("数据导入成功");
+            return;
           }
-        };
-        reader.readAsText(file);
-      }
+
+          if (parsed && typeof parsed === "object") {
+            dispatch({ type: "LOAD_STATE", payload: parsed });
+            alert("数据导入成功");
+            return;
+          }
+
+          alert("文件格式错误");
+        } catch {
+          alert("文件格式错误");
+        }
+      };
+      reader.readAsText(file);
     };
     input.click();
   };

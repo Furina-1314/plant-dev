@@ -160,7 +160,7 @@ export default function PlantInfo() {
               ) : previewStage < currentIndex ? (
                 <span className="text-sm text-gray-500">已解锁</span>
               ) : (
-                <span className="text-sm text-amber-600">还需 {PLANT_STAGES[previewStage].minAffection - state.affection} 好感度解锁</span>
+                <span className="text-sm text-amber-600">还需 {Math.max(0, PLANT_STAGES[previewStage].minAffection - state.affection)} 好感度解锁</span>
               )}
             </div>
           </div>

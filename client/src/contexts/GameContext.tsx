@@ -79,6 +79,8 @@ export interface GameState {
   timerMode: "focus" | "break";
   timeRemaining: number;
   lastCycleCompletionMark: number;
+  cycleAccumulatedFocusSeconds: number;
+  cycleAccumulatedPomodoros: number;
 
   // Sound — scene-based
   activeScene: string | null;
@@ -349,6 +351,8 @@ const initialState: GameState = {
   timerMode: "focus",
   timeRemaining: 25 * 60,
   lastCycleCompletionMark: 0,
+  cycleAccumulatedFocusSeconds: 0,
+  cycleAccumulatedPomodoros: 0,
   activeScene: null,
   customMix: {},
   masterVolume: 0.5,
@@ -388,6 +392,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         isTimerRunning: false,
         currentCycle: 1,
+        cycleAccumulatedFocusSeconds: 0,
+        cycleAccumulatedPomodoros: 0,
         timeRemaining: state.timerMode === "focus"
           ? state.pomodoroMinutes * 60
           : state.breakMinutes * 60,
@@ -407,10 +413,25 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           state.pomodoroMinutes * 60,
           action.payload?.completedFocusSeconds ?? state.pomodoroMinutes * 60,
         ));
-        const completedFocusMinutes = completedFocusSeconds / 60;
 
-        // 好感度按实际完成时长计算：每分钟0.8，但至少获得1点
-        const affectionGain = Math.max(1, Math.floor(completedFocusMinutes * 0.8));
+        const accumulatedSeconds = state.cycleAccumulatedFocusSeconds + completedFocusSeconds;
+        const accumulatedPomodoros = state.cycleAccumulatedPomodoros + 1;
+        const cycleFinished = state.currentCycle >= state.pomodoroCycles;
+
+        if (!cycleFinished) {
+          return {
+            ...state,
+            isTimerRunning: true,
+            timerMode: "break",
+            currentCycle: state.currentCycle,
+            timeRemaining: state.breakMinutes * 60,
+            cycleAccumulatedFocusSeconds: accumulatedSeconds,
+            cycleAccumulatedPomodoros: accumulatedPomodoros,
+          };
+        }
+
+        const settledMinutes = Math.floor(accumulatedSeconds / 60);
+        const affectionGain = settledMinutes > 0 ? Math.max(1, Math.floor(settledMinutes * 0.8)) : 0;
         const newStreak = isConsecutive || state.lastSessionDate === today
           ? (state.lastSessionDate === today ? state.currentStreak : state.currentStreak + 1)
           : 1;
@@ -420,41 +441,40 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         const updatedHeatmap = existingDay
           ? state.heatmapData.map((d) =>
               d.date === todayStr
-                ? { ...d, minutes: d.minutes + completedFocusMinutes, sessions: d.sessions + 1 }
+                ? { ...d, minutes: d.minutes + settledMinutes, sessions: d.sessions + accumulatedPomodoros }
                 : d
             )
-          : [...state.heatmapData, { date: todayStr, minutes: completedFocusMinutes, sessions: 1 }];
-
-        const cycleFinished = state.currentCycle >= state.pomodoroCycles;
+          : [...state.heatmapData, { date: todayStr, minutes: settledMinutes, sessions: accumulatedPomodoros }];
 
         return {
           ...state,
           affection: Math.max(0, (Number.isFinite(state.affection) ? state.affection : 0) + affectionGain),
-          totalFocusMinutes: state.totalFocusMinutes + completedFocusMinutes,
-          sessionsCompleted: state.sessionsCompleted + 1,
+          totalFocusMinutes: state.totalFocusMinutes + settledMinutes,
+          sessionsCompleted: state.sessionsCompleted + accumulatedPomodoros,
           currentStreak: newStreak,
           longestStreak: Math.max(state.longestStreak, newStreak),
           lastSessionDate: today,
-          // 达到循环上限结束；否则进入同轮休息
-          isTimerRunning: cycleFinished ? false : true,
-          timerMode: cycleFinished ? "focus" : "break",
-          currentCycle: cycleFinished ? 1 : state.currentCycle,
-          timeRemaining: cycleFinished ? state.pomodoroMinutes * 60 : state.breakMinutes * 60,
-          lastCycleCompletionMark: cycleFinished ? Date.now() : state.lastCycleCompletionMark,
+          isTimerRunning: false,
+          timerMode: "focus",
+          currentCycle: 1,
+          timeRemaining: state.pomodoroMinutes * 60,
+          lastCycleCompletionMark: Date.now(),
+          cycleAccumulatedFocusSeconds: 0,
+          cycleAccumulatedPomodoros: 0,
           heatmapData: updatedHeatmap,
           sessions: [
             ...state.sessions,
             {
               id: Date.now().toString(),
               startTime: new Date().toISOString(),
-              duration: Number(completedFocusMinutes.toFixed(2)),
+              duration: settledMinutes,
               completed: true,
             },
           ],
         };
       }
 
-      // 休息完成 -> 进入下一轮专注
+      // 休息完成 -> 自动进入下一轮专注并启动
       return {
         ...state,
         isTimerRunning: true,
@@ -651,9 +671,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         currentMusicId: action.payload,
         isMusicPlaying: action.payload !== null,
-        // Stop scene sounds when playing music
-        activeScene: action.payload !== null ? null : state.activeScene,
-        customMix: action.payload !== null ? {} : state.customMix,
       };
 
     case "PAUSE_MUSIC":

@@ -97,23 +97,25 @@ export default function MusicPanel() {
           </button>
           <button onClick={playNext} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="下一首"><SkipForward size={16} /></button>
 
-          <button onClick={() => setShowVolumeSlider((v) => !v)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="音量">
-            <Volume2 size={16} />
-          </button>
-          {showVolumeSlider && (
-            <div className="absolute left-[130px] bottom-9 w-8 h-28 bg-white border border-gray-200 rounded-lg shadow-md flex items-center justify-center">
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
-                className="h-20 w-3 accent-indigo-500"
-                style={{ writingMode: "vertical-lr", direction: "rtl" }}
-              />
-            </div>
-          )}
+          <div className="relative">
+            <button onClick={() => setShowVolumeSlider((v) => !v)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="音量">
+              <Volume2 size={16} />
+            </button>
+            {showVolumeSlider && (
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-9 h-28 bg-white border border-gray-200 rounded-lg shadow-md flex items-center justify-center z-20">
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="h-20 w-3 accent-indigo-500"
+                  style={{ writingMode: "vertical-lr", direction: "rtl" }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <button onClick={handleRepeatToggle} className="px-2 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center gap-1" title="切换循环模式">

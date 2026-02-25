@@ -32,9 +32,9 @@ export default function StatsPanel() {
   const avgMinutes = Math.round(weekTotalMinutes / 7);
   const todayDateStr = new Date().toDateString();
   const todayCompletedTodos = state.memos.filter((m) => m.done && new Date(m.updatedAt).toDateString() === todayDateStr).length;
-  const bestDay = weekData.reduce((best, current) => 
+  const bestDay = roundedWeekData.reduce((best, current) => 
     current.minutes > best.minutes ? current : best
-  , weekData[0]);
+  , roundedWeekData[0]);
 
   const getLevel = (minutes: number) => {
     if (minutes < 100) return { name: "专注新手", icon: "🌱", color: "text-gray-500" };
@@ -185,7 +185,7 @@ export default function StatsPanel() {
             <Trophy size={14} className="text-amber-400" />
             <span className="text-xs text-gray-500">最佳一天</span>
           </div>
-          <span className="text-xs font-medium text-gray-700">{bestDay.label} ({bestDay.minutes}分钟)</span>
+          <span className="text-xs font-medium text-gray-700">{bestDay.label} ({Math.round(bestDay.minutes)}分钟)</span>
         </div>
         <div className="flex items-center justify-between py-2 border-b border-gray-100">
           <div className="flex items-center gap-2">
