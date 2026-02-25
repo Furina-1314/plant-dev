@@ -119,8 +119,8 @@ export default function PlantInfo() {
 
       {/* 植物预览弹窗 */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPreview(false)}>
-          <div className="bg-white rounded-3xl p-4 max-w-sm w-full max-h-[88vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm pt-8 pb-4 px-4 overflow-y-auto" onClick={() => setShowPreview(false)}>
+          <div className="bg-white rounded-3xl p-4 max-w-sm w-full max-h-[calc(100vh-3rem)] overflow-y-auto shadow-2xl mt-2" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">植物成长预览</h3>
               <button onClick={() => setShowPreview(false)} className="p-2 rounded-full hover:bg-gray-100">

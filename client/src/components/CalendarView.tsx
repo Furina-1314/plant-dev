@@ -6,10 +6,17 @@ interface CalendarViewProps {
   onClose: () => void;
 }
 
+function toLocalDateStr(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export default function CalendarView({ onClose }: CalendarViewProps) {
   const { state, dispatch } = useGame();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(toLocalDateStr(new Date()));
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -17,7 +24,7 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
   const lastDay = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
   const startDayOfWeek = firstDay.getDay();
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = toLocalDateStr(new Date());
 
   const calendarDays = useMemo(() => {
     const days = [] as Array<null | { day: number; date: string; minutes: number; sessions: number }>;
@@ -25,7 +32,7 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = toLocalDateStr(date);
       const heatmapData = state.heatmapData.find((d) => d.date === dateStr);
       days.push({ day, date: dateStr, minutes: heatmapData?.minutes || 0, sessions: heatmapData?.sessions || 0 });
     }
@@ -48,9 +55,14 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
     return {
       totalMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
       totalSessions: days.reduce((sum, d) => sum + d.sessions, 0),
+      completedTodos: state.memos.filter((m) => {
+        if (!m.done) return false;
+        const dt = new Date(m.updatedAt);
+        return dt.getFullYear() === year && dt.getMonth() === month;
+      }).length,
       activeDays: days.filter((d) => d.minutes > 0).length,
     };
-  }, [calendarDays]);
+  }, [calendarDays, state.memos, year, month]);
 
   const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
 
@@ -69,9 +81,10 @@ export default function CalendarView({ onClose }: CalendarViewProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 p-5 bg-gradient-to-r from-emerald-50 to-teal-50 shrink-0">
+        <div className="grid grid-cols-4 gap-4 p-5 bg-gradient-to-r from-emerald-50 to-teal-50 shrink-0">
           <div className="text-center"><div className="flex items-center justify-center gap-1 text-emerald-600 mb-1"><Clock size={14} /><span className="text-lg font-bold">{monthStats.totalMinutes}</span></div><div className="text-[10px] text-gray-500">本月专注分钟</div></div>
           <div className="text-center"><div className="flex items-center justify-center gap-1 text-amber-600 mb-1"><Target size={14} /><span className="text-lg font-bold">{monthStats.totalSessions}</span></div><div className="text-[10px] text-gray-500">完成番茄数</div></div>
+          <div className="text-center"><div className="flex items-center justify-center gap-1 text-indigo-600 mb-1"><span className="text-lg font-bold">{monthStats.completedTodos}</span></div><div className="text-[10px] text-gray-500">本月完成待办</div></div>
           <div className="text-center"><div className="flex items-center justify-center gap-1 text-blue-600 mb-1"><span className="text-lg font-bold">{monthStats.activeDays}</span></div><div className="text-[10px] text-gray-500">活跃天数</div></div>
         </div>
 

@@ -24,6 +24,7 @@ import {
   X,
   User,
   Calendar,
+  CheckSquare,
 } from "lucide-react";
 
 const PlantScene = lazy(() => import("@/components/PlantScene"));
@@ -43,7 +44,7 @@ export default function Home() {
   const [showCalendar, setShowCalendar] = useState(false);
 
   const rightTabs: { id: RightTab; label: string; icon: typeof FileText }[] = [
-    { id: "todo", label: "待办", icon: FileText },
+    { id: "todo", label: "待办", icon: CheckSquare },
     { id: "habits", label: "习惯", icon: Target },
     { id: "notes", label: "笔记", icon: FileText },
     { id: "stats", label: "统计", icon: BarChart3 },
@@ -54,7 +55,7 @@ export default function Home() {
     { id: "music" as MobilePanel, label: "音乐", icon: Volume2 },
     { id: "sounds" as MobilePanel, label: "音效", icon: Volume2 },
     { id: "plant" as MobilePanel, label: "植物", icon: Sprout },
-    { id: "todo" as MobilePanel, label: "待办", icon: FileText },
+    { id: "todo" as MobilePanel, label: "待办", icon: CheckSquare },
     { id: "notes" as MobilePanel, label: "笔记", icon: FileText },
     { id: "habits" as MobilePanel, label: "习惯", icon: Target },
     { id: "stats" as MobilePanel, label: "统计", icon: BarChart3 },
@@ -111,13 +112,13 @@ export default function Home() {
         </div>
 
         {/* 左侧切换按钮 */}
-        <button onClick={() => setLeftCollapsed(!leftCollapsed)} className="absolute left-0 top-1/2 -translate-y-1/2 z-[90] w-6 h-14 bg-white/90 shadow-lg rounded-r-xl flex items-center justify-center hover:bg-white transition-all border-y border-r border-gray-200">
+        <button onClick={() => setLeftCollapsed(!leftCollapsed)} style={{ left: leftCollapsed ? 0 : 300 }} className="absolute top-1/2 -translate-y-1/2 z-[90] w-6 h-14 bg-white/90 shadow-lg rounded-r-xl flex items-center justify-center hover:bg-white transition-all border-y border-r border-gray-200">
           {leftCollapsed ? <ChevronRight size={16} className="text-gray-600" /> : <ChevronLeft size={16} className="text-gray-600" />}
         </button>
 
         {/* 中间 */}
-        <div className="flex-1 relative flex items-center justify-center p-6">
-          <div className="w-full max-w-2xl h-full max-h-[700px] relative">
+        <div className="flex-1 relative z-20 flex items-center justify-center p-4 overflow-visible">
+          <div className="w-full max-w-2xl h-full relative overflow-visible">
             <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Leaf size={40} className="text-emerald-400 animate-pulse" /></div>}>
               <PlantScene />
             </Suspense>
@@ -126,7 +127,7 @@ export default function Home() {
         </div>
 
         {/* 右侧切换按钮 */}
-        <button onClick={() => setRightCollapsed(!rightCollapsed)} className="absolute right-0 top-1/2 -translate-y-1/2 z-[90] w-6 h-14 bg-white/90 shadow-lg rounded-l-xl flex items-center justify-center hover:bg-white transition-all border-y border-l border-gray-200">
+        <button onClick={() => setRightCollapsed(!rightCollapsed)} style={{ right: rightCollapsed ? 0 : 380 }} className="absolute top-1/2 -translate-y-1/2 z-[90] w-6 h-14 bg-white/90 shadow-lg rounded-l-xl flex items-center justify-center hover:bg-white transition-all border-y border-l border-gray-200">
           {rightCollapsed ? <ChevronLeft size={16} className="text-gray-600" /> : <ChevronRight size={16} className="text-gray-600" />}
         </button>
 

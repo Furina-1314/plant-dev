@@ -12,7 +12,7 @@ function formatTime(value: number) {
 
 export default function MusicPanel() {
   const { state, dispatch } = useGame();
-  const { currentTrack, isPlaying, togglePlay, playNext, playPrevious, repeatMode, setRepeatMode, currentTime, duration, seekTo } = useMusicPlayer();
+  const { currentTrack, isPlaying, togglePlay, playNext, playPrevious, repeatMode, setRepeatMode, currentTime, duration, seekTo, volume, setVolume } = useMusicPlayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -88,6 +88,18 @@ export default function MusicPanel() {
             {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </button>
           <button onClick={playNext} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600" title="下一首"><SkipForward size={16} /></button>
+          <div className="flex items-center gap-1 ml-1">
+            <span className="text-[10px] text-gray-400">音量</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="w-16 accent-indigo-500"
+            />
+          </div>
         </div>
 
         <button onClick={handleRepeatToggle} className="px-2 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center gap-1" title="切换循环模式">

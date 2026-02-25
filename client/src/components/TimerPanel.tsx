@@ -8,7 +8,7 @@ interface TimerPanelProps {
 }
 
 // 庆祝动画
-function Celebration({ show, onComplete }: { show: boolean; onComplete: () => void }) {
+function Celebration({ show, onComplete, emoji = "🎉", message = "" }: { show: boolean; onComplete: () => void; emoji?: string; message?: string }) {
   useEffect(() => {
     if (show) {
       const timer = setTimeout(onComplete, 1500);
@@ -20,7 +20,10 @@ function Celebration({ show, onComplete }: { show: boolean; onComplete: () => vo
 
   return (
     <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm rounded-2xl">
-      <div className="text-6xl animate-bounce">🎉</div>
+      <div className="text-center">
+        <div className="text-6xl animate-bounce">{emoji}</div>
+        {message && <div className="mt-2 text-sm font-semibold text-emerald-700">{message}</div>}
+      </div>
     </div>
   );
 }
@@ -148,6 +151,7 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showCycleEndCelebration, setShowCycleEndCelebration] = useState(false);
 
   // 监听专注完成
   useEffect(() => {
@@ -159,6 +163,11 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
       }
     }
   }, [mode, state.sessionsCompleted]);
+
+  useEffect(() => {
+    if (!state.lastCycleCompletionMark) return;
+    setShowCycleEndCelebration(true);
+  }, [state.lastCycleCompletionMark]);
 
   const handleCelebrationComplete = useCallback(() => {
     setShowCelebration(false);
@@ -274,6 +283,12 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
   return (
     <div className={`bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg flex flex-col relative ${compact ? "h-[340px]" : "h-[400px]"}`}>
       <Celebration show={showCelebration} onComplete={handleCelebrationComplete} />
+      <Celebration
+        show={showCycleEndCelebration}
+        onComplete={() => setShowCycleEndCelebration(false)}
+        emoji="🏆"
+        message="已完成本轮番茄循环！"
+      />
 
       {/* 模式指示器 */}
       <div className="flex items-center justify-center gap-2 mb-3 shrink-0">
@@ -308,8 +323,13 @@ export default function TimerPanel({ compact = false }: TimerPanelProps) {
 
       {/* 控制按钮 */}
       <div className="flex items-center justify-center gap-4 shrink-0 mt-2">
-        <button onClick={fastForward} className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" title="快进当前阶段">
-          <FastForward size={20} className="text-gray-600" />
+        <button
+          onClick={fastForward}
+          disabled={mode === "break"}
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${mode === "break" ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-gray-100 hover:bg-gray-200"}`}
+          title={mode === "break" ? "休息阶段不可快进" : "快进当前番茄"}
+        >
+          <FastForward size={20} className={mode === "break" ? "text-gray-300" : "text-gray-600"} />
         </button>
 
         {mode === "focus" ? (
