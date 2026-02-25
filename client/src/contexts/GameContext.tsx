@@ -421,9 +421,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             )
           : [...state.heatmapData, { date: todayStr, minutes: completedFocusMinutes, sessions: 1 }];
 
-        const hasCompletedAllCycles = state.currentCycle >= state.pomodoroCycles;
-
-        const hasCompletedAllCycles = state.currentCycle >= state.pomodoroCycles;
+        const cycleFinished = state.currentCycle >= state.pomodoroCycles;
 
         return {
           ...state,
@@ -434,11 +432,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           longestStreak: Math.max(state.longestStreak, newStreak),
           lastSessionDate: today,
           // 达到循环上限结束；否则进入同轮休息
-          isTimerRunning: hasCompletedAllCycles ? false : true,
-          timerMode: hasCompletedAllCycles ? "focus" : "break",
-          currentCycle: hasCompletedAllCycles ? 1 : state.currentCycle,
-          timeRemaining: hasCompletedAllCycles ? state.pomodoroMinutes * 60 : state.breakMinutes * 60,
-          lastCycleCompletionMark: hasCompletedAllCycles ? Date.now() : state.lastCycleCompletionMark,
+          isTimerRunning: cycleFinished ? false : true,
+          timerMode: cycleFinished ? "focus" : "break",
+          currentCycle: cycleFinished ? 1 : state.currentCycle,
+          timeRemaining: cycleFinished ? state.pomodoroMinutes * 60 : state.breakMinutes * 60,
+          lastCycleCompletionMark: cycleFinished ? Date.now() : state.lastCycleCompletionMark,
           heatmapData: updatedHeatmap,
           sessions: [
             ...state.sessions,
