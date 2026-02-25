@@ -70,6 +70,39 @@ export function useMusicPlayer() {
     if (!isPrimaryControllerRef.current) return;
     if (!audioRef.current) return;
 
+    const readAudioProgress = () => {
+      const nextDuration = Number.isFinite(audioRef.current?.duration) ? Number(audioRef.current?.duration) : 0;
+      const nextTime = Number.isFinite(audioRef.current?.currentTime) ? Number(audioRef.current?.currentTime) : 0;
+      setDuration(nextDuration);
+      setCurrentTime(nextTime);
+    };
+
+    // 初始化当前显示，避免面板首次打开时进度条不同步
+    readAudioProgress();
+
+    const handleTimeUpdate = () => readAudioProgress();
+    const handleLoadedMetadata = () => readAudioProgress();
+    const handleDurationChange = () => readAudioProgress();
+
+    audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
+    audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audioRef.current.addEventListener("durationchange", handleDurationChange);
+
+    // 某些浏览器/场景下 timeupdate 触发不稳定，增加轮询兜底，避免进度条卡在 00:00
+    const poll = window.setInterval(readAudioProgress, 250);
+
+    return () => {
+      window.clearInterval(poll);
+      audioRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
+      audioRef.current?.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audioRef.current?.removeEventListener("durationchange", handleDurationChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPrimaryControllerRef.current) return;
+    if (!audioRef.current) return;
+
     const handleEnded = () => {
       const { musicTracks, currentMusicId, musicRepeatMode } = state;
 
